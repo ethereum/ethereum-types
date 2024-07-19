@@ -9,7 +9,3 @@ line_length = 79
 
 [tool.black]
 line-length = 79
-
-[tool.docc.output]
-path = "docs"
-extension = ".html"
