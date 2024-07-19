@@ -1,67 +1,28 @@
 """
-Integer and array types which are used by—but not unique to—Ethereum.
-
-[`Uint`] represents non-negative integers of arbitrary size, while subclasses
-of [`FixedUint`] (like [`U256`] or [`U32`]) represent non-negative integers of
-particular sizes.
-
-Similarly, [`Bytes`] represents arbitrarily long byte sequences, while
-subclasses of [`FixedBytes`] (like [`Bytes0`] or [`Bytes64`]) represent
-sequences containing an exact number of bytes.
-
-[`Uint`]: ref:ethereum.base_types.Uint
-[`FixedUint`]: ref:ethereum.base_types.FixedUint
-[`U32`]: ref:ethereum.base_types.U32
-[`U256`]: ref:ethereum.base_types.U256
-[`Bytes`]: ref:ethereum.base_types.Bytes
-[`FixedBytes`]: ref:ethereum.base_types.FixedBytes
-[`Bytes0`]: ref:ethereum.base_types.Bytes0
-[`Bytes64`]: ref:ethereum.base_types.Bytes64
+Numeric types (mostly integers.)
 """
 
-from dataclasses import is_dataclass, replace
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Optional,
-    Protocol,
-    Tuple,
-    Type,
-    TypeVar,
-    runtime_checkable,
-)
+from typing import ClassVar, Optional, Tuple, Type, TypeVar
 
+from .bytes import Bytes, Bytes4, Bytes8, Bytes32
 
-@runtime_checkable
-class SlottedFreezable(Protocol):
-    """
-    A [`Protocol`] implemented by data classes annotated with
-    [`@slotted_freezable`].
-
-    [`@slotted_freezable`]: ref:ethereum.base_types.slotted_freezable
-    [`Protocol`]: https://docs.python.org/library/typing.html#typing.Protocol
-    """
-
-    _frozen: bool
-
-
-U255_CEIL_VALUE = 2**255
+U255_CEILING = 2**255
 """
 Smallest value that requires 256 bits to represent. Mostly used in signed
-arithmetic operations, like [`sdiv`].
-
-[`sdiv`]: ref:ethereum.frontier.vm.instructions.arithmetic.sdiv
+arithmetic operations.
 """
 
-U256_CEIL_VALUE = 2**256
+U256_CEILING = 2**256
 """
 Smallest value that requires 257 bits to represent. Used when converting a
 [`U256`] in two's complement format to a regular `int` in [`U256.to_signed`].
 
-[`U256`]: ref:ethereum.base_types.U256
-[`U256.to_signed`]: ref:ethereum.base_types.U256.to_signed
+[`U256`]: ref:ethereum_types.numeric.U256
+[`U256.to_signed`]: ref:ethereum_types.numeric.U256.to_signed
 """
+
+
+U = TypeVar("U", bound="Uint")
 
 
 class Uint(int):
@@ -72,7 +33,7 @@ class Uint(int):
     __slots__ = ()
 
     @classmethod
-    def from_be_bytes(cls: Type, buffer: "Bytes") -> "Uint":
+    def from_be_bytes(cls: Type[U], buffer: "Bytes") -> U:
         """
         Converts a sequence of bytes into an arbitrarily sized unsigned integer
         from its big endian representation.
@@ -80,7 +41,7 @@ class Uint(int):
         return cls(int.from_bytes(buffer, "big"))
 
     @classmethod
-    def from_le_bytes(cls: Type, buffer: "Bytes") -> "Uint":
+    def from_le_bytes(cls: Type[U], buffer: "Bytes") -> U:
         """
         Converts a sequence of bytes into an arbitrarily sized unsigned integer
         from its little endian representation.
@@ -703,7 +664,7 @@ class U256(FixedUint):
             return int(self)
 
         # -1 * (2's complement of U256 value)
-        return int(self) - U256_CEIL_VALUE
+        return int(self) - U256_CEILING
 
 
 U256.MAX_VALUE = int.__new__(U256, (2**256) - 1)
@@ -806,179 +767,3 @@ class U64(FixedUint):
 
 
 U64.MAX_VALUE = int.__new__(U64, (2**64) - 1)
-
-
-B = TypeVar("B", bound="FixedBytes")
-
-
-class FixedBytes(bytes):
-    """
-    Superclass for fixed sized byte arrays. Not intended to be used directly,
-    but should be subclassed.
-    """
-
-    LENGTH: int
-    """
-    Number of bytes in each instance of this class.
-    """
-
-    __slots__ = ()
-
-    def __new__(cls: Type[B], *args: Any, **kwargs: Any) -> B:
-        """
-        Create a new instance, ensuring the result has the correct length.
-        """
-        result = super(FixedBytes, cls).__new__(cls, *args, **kwargs)
-        if len(result) != cls.LENGTH:
-            raise ValueError(
-                f"expected {cls.LENGTH} bytes but got {len(result)}"
-            )
-        return result
-
-
-class Bytes0(FixedBytes):
-    """
-    Byte array of exactly zero elements.
-    """
-
-    LENGTH = 0
-    """
-    Number of bytes in each instance of this class.
-    """
-
-
-class Bytes4(FixedBytes):
-    """
-    Byte array of exactly four elements.
-    """
-
-    LENGTH = 4
-    """
-    Number of bytes in each instance of this class.
-    """
-
-
-class Bytes8(FixedBytes):
-    """
-    Byte array of exactly eight elements.
-    """
-
-    LENGTH = 8
-    """
-    Number of bytes in each instance of this class.
-    """
-
-
-class Bytes20(FixedBytes):
-    """
-    Byte array of exactly 20 elements.
-    """
-
-    LENGTH = 20
-    """
-    Number of bytes in each instance of this class.
-    """
-
-
-class Bytes32(FixedBytes):
-    """
-    Byte array of exactly 32 elements.
-    """
-
-    LENGTH = 32
-    """
-    Number of bytes in each instance of this class.
-    """
-
-
-class Bytes48(FixedBytes):
-    """
-    Byte array of exactly 48 elements.
-    """
-
-    LENGTH = 48
-
-
-class Bytes64(FixedBytes):
-    """
-    Byte array of exactly 64 elements.
-    """
-
-    LENGTH = 64
-    """
-    Number of bytes in each instance of this class.
-    """
-
-
-class Bytes256(FixedBytes):
-    """
-    Byte array of exactly 256 elements.
-    """
-
-    LENGTH = 256
-    """
-    Number of bytes in each instance of this class.
-    """
-
-
-Bytes = bytes
-"""
-Sequence of bytes (octets) of arbitrary length.
-"""
-
-
-def _setattr_function(self: Any, attr: str, value: Any) -> None:
-    if getattr(self, "_frozen", None):
-        raise Exception("Mutating frozen dataclasses is not allowed.")
-    else:
-        object.__setattr__(self, attr, value)
-
-
-def _delattr_function(self: Any, attr: str) -> None:
-    if self._frozen:
-        raise Exception("Mutating frozen dataclasses is not allowed.")
-    else:
-        object.__delattr__(self, attr)
-
-
-def _make_init_function(f: Callable) -> Callable:
-    def init_function(self: Any, *args: Any, **kwargs: Any) -> None:
-        will_be_frozen = kwargs.pop("_frozen", True)
-        object.__setattr__(self, "_frozen", False)
-        f(self, *args, **kwargs)
-        self._frozen = will_be_frozen
-
-    return init_function
-
-
-def slotted_freezable(cls: Any) -> Any:
-    """
-    Monkey patches a dataclass so it can be frozen by setting `_frozen` to
-    `True` and uses `__slots__` for efficiency.
-
-    Instances will be created frozen by default unless you pass `_frozen=False`
-    to `__init__`.
-    """
-    cls.__slots__ = ("_frozen",) + tuple(cls.__annotations__)
-    cls.__init__ = _make_init_function(cls.__init__)
-    cls.__setattr__ = _setattr_function
-    cls.__delattr__ = _delattr_function
-    return type(cls)(cls.__name__, cls.__bases__, dict(cls.__dict__))
-
-
-S = TypeVar("S")
-
-
-def modify(obj: S, f: Callable[[S], None]) -> S:
-    """
-    Create a copy of `obj` (which must be [`@slotted_freezable`]), and modify
-    it by applying `f`. The returned copy will be frozen.
-
-    [`@slotted_freezable`]: ref:ethereum.base_types.slotted_freezable
-    """
-    assert is_dataclass(obj)
-    assert isinstance(obj, SlottedFreezable)
-    new_obj = replace(obj, _frozen=False)
-    f(new_obj)
-    new_obj._frozen = True
-    return new_obj
