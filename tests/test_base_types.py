@@ -1,6 +1,6 @@
 import pytest
 
-from ethereum.base_types import U256, FixedBytes, Uint
+from ethereum_types.base_types import U256, FixedBytes, Uint
 
 
 def test_uint_new() -> None:
@@ -1232,9 +1232,7 @@ def test_u256_bitwise_rxor_successful() -> None:
     assert U256(0).__rxor__(U256(0)) == 0
     assert U256(2**256 - 1).__rxor__(U256(0)) == 2**256 - 1
     assert U256(2**256 - 1).__rxor__(U256(2**256 - 1)) == U256(0)
-    assert U256(2**256 - 1).__rxor__(U256(17)) == U256(2**256 - 1) - U256(
-        17
-    )
+    assert U256(2**256 - 1).__rxor__(U256(17)) == U256(2**256 - 1) - U256(17)
     assert U256(17).__rxor__(U256(18)) == U256(3)
 
 
@@ -1251,9 +1249,7 @@ def test_u256_bitwise_ixor_successful() -> None:
     assert U256(0).__ixor__(U256(0)) == 0
     assert U256(2**256 - 1).__ixor__(U256(0)) == 2**256 - 1
     assert U256(2**256 - 1).__ixor__(U256(2**256 - 1)) == U256(0)
-    assert U256(2**256 - 1).__ixor__(U256(17)) == U256(2**256 - 1) - U256(
-        17
-    )
+    assert U256(2**256 - 1).__ixor__(U256(17)) == U256(2**256 - 1) - U256(17)
     assert U256(17).__ixor__(U256(18)) == U256(3)
 
 
