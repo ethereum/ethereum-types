@@ -2,9 +2,10 @@
 Numeric types (mostly integers.)
 """
 
-from typing import ClassVar, Optional, Tuple, Type, TypeVar
+from numbers import Integral
+from typing import ClassVar, NoReturn, Optional, Tuple, Type, TypeVar, Union
 
-from .bytes import Bytes, Bytes4, Bytes8, Bytes32
+from .bytes import Bytes, Bytes4, Bytes8, Bytes32, Bytes64
 
 U255_CEILING = 2**255
 """
@@ -25,12 +26,13 @@ Smallest value that requires 257 bits to represent. Used when converting a
 U = TypeVar("U", bound="Uint")
 
 
-class Uint(int):
+class Uint(Integral):
     """
     Unsigned integer of arbitrary size.
     """
 
-    __slots__ = ()
+    __slots__ = ("_number",)
+    _number: int
 
     @classmethod
     def from_be_bytes(cls: Type[U], buffer: "Bytes") -> U:
@@ -48,224 +50,359 @@ class Uint(int):
         """
         return cls(int.from_bytes(buffer, "little"))
 
-    def __init__(self, value: int) -> None:
-        if not isinstance(value, int):
+    def __init__(self, value: Union[int, "Uint"]) -> None:
+        if isinstance(value, int):
+            if value < 0:
+                raise OverflowError()
+            self._number = value
+        elif isinstance(value, Uint):
+            self._number = value._number
+        else:
             raise TypeError()
 
-        if value < 0:
-            raise OverflowError()
+    def __abs__(self) -> "Uint":
+        return Uint(self)
 
-    def __radd__(self, left: int) -> "Uint":
+    def __radd__(self, left: "Uint") -> "Uint":
         return self.__add__(left)
 
-    def __add__(self, right: int) -> "Uint":
-        if not isinstance(right, int):
+    def __add__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+        return Uint(self._number + right._number)
+
+    def __iadd__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+        self._number += right._number
+        return self
+
+    def __sub__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if right < 0:
+        if self._number < right._number:
             raise OverflowError()
 
-        return int.__new__(self.__class__, int.__add__(self, right))
+        return Uint(self._number - right._number)
 
-    def __iadd__(self, right: int) -> "Uint":
-        return self.__add__(right)
-
-    def __sub__(self, right: int) -> "Uint":
-        if not isinstance(right, int):
+    def __rsub__(self, left: "Uint") -> "Uint":
+        if not isinstance(left, Uint):
             return NotImplemented
 
-        if right < 0 or self < right:
+        if self._number > left._number:
             raise OverflowError()
 
-        return int.__new__(self.__class__, int.__sub__(self, right))
+        return Uint(left._number - self._number)
 
-    def __rsub__(self, left: int) -> "Uint":
-        if not isinstance(left, int):
+    def __isub__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+        if right._number > self._number:
+            raise OverflowError()
+        self._number -= right._number
+        return self
+
+    def __mul__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if left < 0 or self > left:
-            raise OverflowError()
+        return Uint(self._number * right._number)
 
-        return int.__new__(self.__class__, int.__rsub__(self, left))
-
-    def __isub__(self, right: int) -> "Uint":
-        return self.__sub__(right)
-
-    def __mul__(self, right: int) -> "Uint":
-        if not isinstance(right, int):
-            return NotImplemented
-
-        if right < 0:
-            raise OverflowError()
-
-        return int.__new__(self.__class__, int.__mul__(self, right))
-
-    def __rmul__(self, left: int) -> "Uint":
+    def __rmul__(self, left: "Uint") -> "Uint":
         return self.__mul__(left)
 
-    def __imul__(self, right: int) -> "Uint":
-        return self.__mul__(right)
+    def __imul__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+        self._number *= right._number
+        return self
 
-    # Explicitly don't override __truediv__, __rtruediv__, and __itruediv__
-    # since they return floats anyway.
+    def __truediv__(self, other: "Uint") -> float:
+        if not isinstance(other, Uint):
+            return NotImplemented
+        return self._number.__truediv__(other._number)
 
-    def __floordiv__(self, right: int) -> "Uint":
-        if not isinstance(right, int):
+    def __rtruediv__(self, other: "Uint") -> float:
+        if not isinstance(other, Uint):
+            return NotImplemented
+        return self._number.__rtruediv__(other._number)
+
+    def __floordiv__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if right < 0:
-            raise OverflowError()
+        return Uint(self._number.__floordiv__(right._number))
 
-        return int.__new__(self.__class__, int.__floordiv__(self, right))
-
-    def __rfloordiv__(self, left: int) -> "Uint":
-        if not isinstance(left, int):
+    def __rfloordiv__(self, left: "Uint") -> "Uint":
+        if not isinstance(left, Uint):
             return NotImplemented
 
-        if left < 0:
-            raise OverflowError()
+        return Uint(self._number.__rfloordiv__(left._number))
 
-        return int.__new__(self.__class__, int.__rfloordiv__(self, left))
+    def __ifloordiv__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+        self._number //= right._number
+        return self
 
-    def __ifloordiv__(self, right: int) -> "Uint":
-        return self.__floordiv__(right)
-
-    def __mod__(self, right: int) -> "Uint":
-        if not isinstance(right, int):
+    def __mod__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if right < 0:
-            raise OverflowError()
+        return Uint(self._number % right._number)
 
-        return int.__new__(self.__class__, int.__mod__(self, right))
-
-    def __rmod__(self, left: int) -> "Uint":
-        if not isinstance(left, int):
+    def __rmod__(self, left: "Uint") -> "Uint":
+        if not isinstance(left, Uint):
             return NotImplemented
 
-        if left < 0:
-            raise OverflowError()
+        return Uint(self._number.__rmod__(left._number))
 
-        return int.__new__(self.__class__, int.__rmod__(self, left))
+    def __imod__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+        self._number %= right._number
+        return self
 
-    def __imod__(self, right: int) -> "Uint":
-        return self.__mod__(right)
-
-    def __divmod__(self, right: int) -> Tuple["Uint", "Uint"]:
-        if not isinstance(right, int):
+    def __divmod__(self, right: "Uint") -> Tuple["Uint", "Uint"]:
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if right < 0:
-            raise OverflowError()
-
-        result = int.__divmod__(self, right)
+        result = self._number.__divmod__(right._number)
         return (
-            int.__new__(self.__class__, result[0]),
-            int.__new__(self.__class__, result[1]),
+            Uint(result[0]),
+            Uint(result[1]),
         )
 
-    def __rdivmod__(self, left: int) -> Tuple["Uint", "Uint"]:
-        if not isinstance(left, int):
+    def __rdivmod__(self, left: "Uint") -> Tuple["Uint", "Uint"]:
+        if not isinstance(left, Uint):
             return NotImplemented
 
-        if left < 0:
-            raise OverflowError()
-
-        result = int.__rdivmod__(self, left)
+        result = self._number.__rdivmod__(left._number)
         return (
-            int.__new__(self.__class__, result[0]),
-            int.__new__(self.__class__, result[1]),
+            Uint(result[0]),
+            Uint(result[1]),
         )
 
-    def __pow__(  # type: ignore[override]
-        self, right: int, modulo: Optional[int] = None
+    def __pow__(
+        self, right: "Uint", modulo: Optional["Uint"] = None
     ) -> "Uint":
+        modulo_int = None
         if modulo is not None:
-            if not isinstance(modulo, int):
+            if not isinstance(modulo, Uint):
                 return NotImplemented
+            modulo_int = modulo._number
 
-            if modulo < 0:
-                raise OverflowError()
-
-        if not isinstance(right, int):
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if right < 0:
-            raise OverflowError()
+        return Uint(self._number.__pow__(right._number, modulo_int))
 
-        return int.__new__(self.__class__, int.__pow__(self, right, modulo))
-
-    def __rpow__(  # type: ignore[misc]
-        self, left: int, modulo: Optional[int] = None
+    def __rpow__(
+        self, left: "Uint", modulo: Optional["Uint"] = None
     ) -> "Uint":
+        modulo_int = None
         if modulo is not None:
-            if not isinstance(modulo, int):
-                return NotImplemented
+            if not isinstance(modulo, Uint):
+                raise TypeError()
+            modulo_int = modulo._number
 
-            if modulo < 0:
-                raise OverflowError()
-
-        if not isinstance(left, int):
+        if not isinstance(left, Uint):
             return NotImplemented
 
-        if left < 0:
-            raise OverflowError()
+        return Uint(self._number.__rpow__(left._number, modulo_int))
 
-        return int.__new__(self.__class__, int.__rpow__(self, left, modulo))
-
-    def __ipow__(  # type: ignore[override]
-        self, right: int, modulo: Optional[int] = None
+    def __ipow__(
+        self, right: "Uint", modulo: Optional["Uint"] = None
     ) -> "Uint":
-        return self.__pow__(right, modulo)
+        modulo_int = None
+        if modulo is not None:
+            if not isinstance(modulo, Uint):
+                raise TypeError()
+            modulo_int = modulo._number
 
-    def __xor__(self, right: int) -> "Uint":
-        if not isinstance(right, int):
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if right < 0:
-            raise OverflowError()
+        self._number = self._number.__pow__(right._number, modulo_int)
+        return self
 
-        return int.__new__(self.__class__, int.__xor__(self, right))
-
-    def __rxor__(self, left: int) -> "Uint":
-        if not isinstance(left, int):
+    def __xor__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
             return NotImplemented
 
-        if left < 0:
-            raise OverflowError()
+        return Uint(self._number.__xor__(right._number))
 
-        return int.__new__(self.__class__, int.__rxor__(self, left))
+    def __rxor__(self, left: "Uint") -> "Uint":
+        if not isinstance(left, Uint):
+            return NotImplemented
 
-    def __ixor__(self, right: int) -> "Uint":
-        return self.__xor__(right)
+        return Uint(self._number.__rxor__(left._number))
 
-    # TODO: Implement and, or, neg, pos, abs, invert, ...
+    def __ixor__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
 
-    def to_be_bytes32(self) -> "Bytes32":
+        self._number = self._number.__xor__(right._number)
+        return self
+
+    def __and__(self, other: "Uint") -> "Uint":
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return Uint(self._number.__and__(other._number))
+
+    def __floor__(self) -> "Uint":
+        return Uint(self)
+
+    def __ceil__(self) -> "Uint":
+        return Uint(self)
+
+    def __int__(self) -> int:
+        return self._number
+
+    def __rand__(self, other: "Uint") -> "Uint":
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return Uint(self._number.__rand__(other._number))
+
+    def __or__(self, other: "Uint") -> "Uint":
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return Uint(self._number.__or__(other._number))
+
+    def __ror__(self, other: "Uint") -> "Uint":
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return Uint(self._number.__ror__(other._number))
+
+    def __neg__(self) -> NoReturn:
+        raise TypeError()
+
+    def __pos__(self) -> "Uint":
+        return Uint(self._number)
+
+    def __invert__(self) -> NoReturn:
+        # TODO: How should this behave?
+        raise NotImplementedError()
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return self._number == other._number
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return self._number <= other._number
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return self._number >= other._number
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return self._number < other._number
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, Uint):
+            return NotImplemented
+
+        return self._number > other._number
+
+    def __round__(self, ndigits: Optional[int] = None) -> "Uint":
+        return Uint(self)
+
+    def __trunc__(self) -> "Uint":
+        return Uint(self)
+
+    def __rshift__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+
+        return Uint(self._number >> right._number)
+
+    def __rrshift__(self, left: "Uint") -> "Uint":
+        if not isinstance(left, Uint):
+            return NotImplemented
+
+        return Uint(self._number.__rrshift__(left._number))
+
+    def __lshift__(self, right: "Uint") -> "Uint":
+        if not isinstance(right, Uint):
+            return NotImplemented
+
+        return Uint(self._number << right._number)
+
+    def __rlshift__(self, left: "Uint") -> "Uint":
+        if not isinstance(left, Uint):
+            return NotImplemented
+
+        return Uint(self._number.__rlshift__(left._number))
+
+    def __hash__(self) -> int:
+        return hash((Uint, self._number))
+
+    def __repr__(self) -> str:
+        return "{}({})".format(type(self).__name__, self._number)
+
+    def __str__(self) -> str:
+        return str(self._number)
+
+    def to_be_bytes64(self) -> Bytes64:
+        """
+        Converts this arbitrarily sized unsigned integer into its big endian
+        representation with exactly 64 bytes.
+        """
+        return Bytes64(self._number.to_bytes(64, "big"))
+
+    def to_be_bytes32(self) -> Bytes32:
         """
         Converts this arbitrarily sized unsigned integer into its big endian
         representation with exactly 32 bytes.
         """
-        return Bytes32(self.to_bytes(32, "big"))
+        return Bytes32(self._number.to_bytes(32, "big"))
 
     def to_be_bytes(self) -> "Bytes":
         """
         Converts this arbitrarily sized unsigned integer into its big endian
         representation, without padding.
         """
-        bit_length = self.bit_length()
+        bit_length = self._number.bit_length()
         byte_length = (bit_length + 7) // 8
-        return self.to_bytes(byte_length, "big")
+        return self._number.to_bytes(byte_length, "big")
 
-    def to_le_bytes(self, number_bytes: Optional[int] = None) -> "Bytes":
+    def to_le_bytes(self) -> "Bytes":
         """
         Converts this arbitrarily sized unsigned integer into its little endian
         representation, without padding.
         """
-        if number_bytes is None:
-            bit_length = self.bit_length()
-            number_bytes = (bit_length + 7) // 8
-        return self.to_bytes(number_bytes, "little")
+        bit_length = self._number.bit_length()
+        number_bytes = (bit_length + 7) // 8
+        return self._number.to_bytes(number_bytes, "little")
+
+    def to_le_bytes32(self) -> Bytes32:
+        """
+        Converts this arbitrarily sized unsigned integer into its little endian
+        representation with exactly 32 bytes.
+        """
+        return Bytes32(self._number.to_bytes(32, "little"))
+
+    def to_le_bytes64(self) -> Bytes64:
+        """
+        Converts this arbitrarily sized unsigned integer into its little endian
+        representation with exactly 64 bytes.
+        """
+        return Bytes64(self._number.to_bytes(64, "little"))
 
 
 T = TypeVar("T", bound="FixedUint")
@@ -648,7 +785,7 @@ class U256(FixedUint):
 
         return cls(value & cls.MAX_VALUE)
 
-    def to_be_bytes32(self) -> "Bytes32":
+    def to_be_bytes32(self) -> Bytes32:
         """
         Converts this 256-bit unsigned integer into its big endian
         representation with exactly 32 bytes.
