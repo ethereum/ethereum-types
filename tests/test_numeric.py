@@ -443,6 +443,16 @@ def test_uint_bit_length() -> None:
     assert Uint(3).bit_length() == Uint(2)
 
 
+def test_uint_to_bytes_zero() -> None:
+    encoded = Uint(0).to_bytes()
+    assert encoded == bytes([0])
+
+
+def test_uint_to_bytes() -> None:
+    encoded = Uint(1).to_bytes(length=Uint(5))
+    assert encoded == bytes([0, 0, 0, 0, 1])
+
+
 def test_uint_to_be_bytes_zero() -> None:
     encoded = Uint(0).to_be_bytes()
     assert encoded == bytes([])
@@ -1655,6 +1665,10 @@ def test_uint_rtruediv() -> None:
     expected = (1).__rtruediv__(2)
     actual = Uint(1).__rtruediv__(Uint(2))
     assert expected == actual
+
+
+def test_uint_eq_str() -> None:
+    assert Uint(1).__eq__("hello") is NotImplemented
 
 
 def test_uint_eq_float() -> None:
