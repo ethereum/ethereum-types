@@ -3,7 +3,7 @@ from math import ceil, floor, trunc
 import pytest
 
 from ethereum_types.bytes import Bytes64
-from ethereum_types.numeric import U256, Uint
+from ethereum_types.numeric import U256, Uint, ulen
 
 
 def test_uint_new() -> None:
@@ -62,8 +62,10 @@ def test_uint_add_float() -> None:
 
 def test_uint_iadd() -> None:
     value = Uint(5)
+    value2 = value
     value += Uint(4)
     assert value == Uint(9)
+    assert value2 == Uint(5)
 
 
 def test_uint_iadd_int() -> None:
@@ -130,9 +132,11 @@ def test_uint_sub_float() -> None:
 
 def test_uint_isub() -> None:
     value = Uint(5)
+    value2 = value
     value -= Uint(4)
     assert isinstance(value, Uint)
     assert value == Uint(1)
+    assert value2 == Uint(5)
 
 
 def test_uint_isub_too_big() -> None:
@@ -196,9 +200,11 @@ def test_uint_mul_float() -> None:
 
 def test_uint_imul() -> None:
     value = Uint(5)
+    value2 = value
     value *= Uint(4)
     assert isinstance(value, Uint)
     assert value == Uint(20)
+    assert value2 == Uint(5)
 
 
 def test_uint_imul_int() -> None:
@@ -258,9 +264,11 @@ def test_uint_rfloordiv_float() -> None:
 
 def test_uint_ifloordiv() -> None:
     value = Uint(5)
+    value2 = value
     value //= Uint(2)
     assert isinstance(value, Uint)
     assert value == Uint(2)
+    assert value2 == Uint(5)
 
 
 def test_uint_ifloordiv_negative() -> None:
@@ -303,9 +311,11 @@ def test_uint_mod_float() -> None:
 
 def test_uint_imod() -> None:
     value = Uint(5)
+    value2 = value
     value %= Uint(4)
     assert isinstance(value, Uint)
     assert value == Uint(1)
+    assert value2 == Uint(5)
 
 
 def test_uint_imod_negative() -> None:
@@ -405,9 +415,11 @@ def test_uint_rpow_modulo_negative() -> None:
 
 def test_uint_ipow() -> None:
     value = Uint(3)
+    value2 = value
     value **= Uint(2)
     assert isinstance(value, Uint)
     assert value == Uint(9)
+    assert value2 == Uint(3)
 
 
 def test_uint_ipow_negative() -> None:
@@ -425,6 +437,10 @@ def test_uint_ipow_modulo() -> None:
 def test_uint_ipow_modulo_negative() -> None:
     with pytest.raises(TypeError):
         Uint(4).__ipow__(Uint(2), -3)  # type: ignore[arg-type]
+
+
+def test_uint_bit_length() -> None:
+    assert Uint(3).bit_length() == Uint(2)
 
 
 def test_uint_to_be_bytes_zero() -> None:
@@ -641,9 +657,11 @@ def test_u256_wrapping_add_negative() -> None:
 
 def test_u256_iadd() -> None:
     value = U256(5)
+    value2 = value
     value += 4
     assert isinstance(value, U256)
     assert value == 9
+    assert value2 == U256(5)
 
 
 def test_u256_iadd_negative() -> None:
@@ -728,9 +746,11 @@ def test_u256_wrapping_sub_negative() -> None:
 
 def test_u256_isub() -> None:
     value = U256(5)
+    value2 = value
     value -= 4
     assert isinstance(value, U256)
     assert value == 1
+    assert value2 == U256(5)
 
 
 def test_u256_isub_negative() -> None:
@@ -818,9 +838,11 @@ def test_u256_wrapping_mul_negative() -> None:
 
 def test_u256_imul() -> None:
     value = U256(5)
+    value2 = value
     value *= 4
     assert isinstance(value, U256)
     assert value == 20
+    assert value2 == U256(5)
 
 
 def test_u256_imul_negative() -> None:
@@ -894,9 +916,11 @@ def test_u256_rfloordiv_float() -> None:
 
 def test_u256_ifloordiv() -> None:
     value = U256(5)
+    value2 = value
     value //= 2
     assert isinstance(value, U256)
     assert value == 2
+    assert value2 == U256(5)
 
 
 def test_u256_ifloordiv_negative() -> None:
@@ -947,9 +971,11 @@ def test_u256_mod_float() -> None:
 
 def test_u256_imod() -> None:
     value = U256(5)
+    value2 = value
     value %= 4
     assert isinstance(value, U256)
     assert value == 1
+    assert value2 == U256(5)
 
 
 def test_u256_imod_overflow() -> None:
@@ -1089,9 +1115,11 @@ def test_u256_rpow_modulo_negative() -> None:
 
 def test_u256_ipow() -> None:
     value = U256(3)
+    value2 = value
     value **= 2
     assert isinstance(value, U256)
     assert value == 9
+    assert value2 == U256(3)
 
 
 def test_u256_ipow_overflow() -> None:
@@ -1293,7 +1321,9 @@ def test_u256_bitwise_rxor_successful() -> None:
     assert U256(0).__rxor__(U256(0)) == 0
     assert U256(2**256 - 1).__rxor__(U256(0)) == 2**256 - 1
     assert U256(2**256 - 1).__rxor__(U256(2**256 - 1)) == U256(0)
-    assert U256(2**256 - 1).__rxor__(U256(17)) == U256(2**256 - 1) - U256(17)
+    assert U256(2**256 - 1).__rxor__(U256(17)) == U256(2**256 - 1) - U256(
+        17
+    )
     assert U256(17).__rxor__(U256(18)) == U256(3)
 
 
@@ -1307,10 +1337,18 @@ def test_u256_bitwise_rxor_failed() -> None:
 
 
 def test_u256_bitwise_ixor_successful() -> None:
+    value = U256(1)
+    value2 = value
+    value ^= U256(1)
+    assert value == U256(0)
+    assert value2 == U256(1)
+
     assert U256(0).__ixor__(U256(0)) == 0
     assert U256(2**256 - 1).__ixor__(U256(0)) == 2**256 - 1
     assert U256(2**256 - 1).__ixor__(U256(2**256 - 1)) == U256(0)
-    assert U256(2**256 - 1).__ixor__(U256(17)) == U256(2**256 - 1) - U256(17)
+    assert U256(2**256 - 1).__ixor__(U256(17)) == U256(2**256 - 1) - U256(
+        17
+    )
     assert U256(17).__ixor__(U256(18)) == U256(3)
 
 
@@ -1422,9 +1460,10 @@ def test_uint_to_le_bytes32_max_value() -> None:
     )
 
 
-def test_u256_neg() -> None:
-    with pytest.raises(TypeError):
-        -Uint(1)
+def test_uint_neg() -> None:
+    result = -Uint(1)
+    assert not isinstance(result, Uint)
+    assert result == -1
 
 
 def test_uint_pos() -> None:
@@ -1472,10 +1511,6 @@ def test_uint_ne_not() -> None:
     assert not (Uint(1) != Uint(1))
 
 
-def test_uint_ne_different_types() -> None:
-    assert Uint(1) != 1
-
-
 def test_uint_le() -> None:
     assert Uint(1) <= Uint(1)
     assert Uint(0) <= Uint(1)
@@ -1484,7 +1519,7 @@ def test_uint_le() -> None:
 
 def test_uint_le_different_types() -> None:
     with pytest.raises(TypeError):
-        Uint(1) <= 1  # noqa: B015
+        Uint(1) <= 1  # type: ignore[operator] # noqa: B015
 
 
 def test_uint_ge() -> None:
@@ -1495,7 +1530,7 @@ def test_uint_ge() -> None:
 
 def test_uint_ge_different_types() -> None:
     with pytest.raises(TypeError):
-        Uint(1) >= 1  # noqa: B015
+        Uint(1) >= 1  # type: ignore[operator] # noqa: B015
 
 
 def test_uint_lt() -> None:
@@ -1506,7 +1541,9 @@ def test_uint_lt() -> None:
 
 def test_uint_lt_different_types() -> None:
     with pytest.raises(TypeError):
-        Uint(1) < 1  # noqa: B015
+        Uint(1) < 1  # type: ignore[operator] # noqa: B015
+    with pytest.raises(TypeError):
+        1 < Uint(1)  # type: ignore[operator] # noqa: B015
 
 
 def test_uint_gt() -> None:
@@ -1517,7 +1554,9 @@ def test_uint_gt() -> None:
 
 def test_uint_gt_different_types() -> None:
     with pytest.raises(TypeError):
-        Uint(1) > 1  # noqa: B015
+        Uint(1) > 1  # type: ignore[operator] # noqa: B015
+    with pytest.raises(TypeError):
+        1 > Uint(1)  # type: ignore[operator] # noqa: B015
 
 
 def test_uint_lshift_int() -> None:
@@ -1618,16 +1657,26 @@ def test_uint_rtruediv() -> None:
     assert expected == actual
 
 
+def test_uint_eq_float() -> None:
+    assert Uint(1) == 1.0
+    assert 1.0 == Uint(1)
+
+
+def test_uint_eq_int() -> None:
+    assert Uint(1) == 1
+    assert 1 == Uint(1)
+
+
 def test_uint_eq() -> None:
     assert Uint(1) == Uint(1)
 
 
+def test_uint_eq_not_float() -> None:
+    assert not (Uint(1) == 1.1)
+
+
 def test_uint_eq_not() -> None:
     assert not (Uint(1) == Uint(2))
-
-
-def test_uint_eq_different_types() -> None:
-    assert not (Uint(1) == 1)
 
 
 def test_uint_hash() -> None:
@@ -1636,7 +1685,9 @@ def test_uint_hash() -> None:
 
 def test_uint_bitwise_rand_successful() -> None:
     assert Uint(0).__rand__(Uint(0)) == Uint(0)
-    assert Uint(2**256 - 1).__rand__(Uint(2**256 - 1)) == Uint(2**256 - 1)
+    assert Uint(2**256 - 1).__rand__(Uint(2**256 - 1)) == Uint(
+        2**256 - 1
+    )
     assert Uint(2**256 - 1).__rand__(Uint(0)) == Uint(0)
 
 
@@ -1719,7 +1770,9 @@ def test_uint_bitwise_rxor_successful() -> None:
     assert Uint(0).__rxor__(Uint(0)) == Uint(0)
     assert Uint(2**256 - 1).__rxor__(Uint(0)) == Uint(2**256 - 1)
     assert Uint(2**256 - 1).__rxor__(Uint(2**256 - 1)) == Uint(0)
-    assert Uint(2**256 - 1).__rxor__(Uint(17)) == Uint(2**256 - 1) - Uint(17)
+    assert Uint(2**256 - 1).__rxor__(Uint(17)) == Uint(2**256 - 1) - Uint(
+        17
+    )
     assert Uint(17).__rxor__(Uint(18)) == Uint(3)
 
 
@@ -1730,10 +1783,18 @@ def test_uint_bitwise_rxor_failed() -> None:
 
 
 def test_uint_bitwise_ixor_successful() -> None:
+    value = Uint(1)
+    value2 = value
+    value ^= Uint(1)
+    assert value == Uint(0)
+    assert value2 == Uint(1)
+
     assert Uint(0).__ixor__(Uint(0)) == Uint(0)
     assert Uint(2**256 - 1).__ixor__(Uint(0)) == Uint(2**256 - 1)
     assert Uint(2**256 - 1).__ixor__(Uint(2**256 - 1)) == Uint(0)
-    assert Uint(2**256 - 1).__ixor__(Uint(17)) == Uint(2**256 - 1) - Uint(17)
+    assert Uint(2**256 - 1).__ixor__(Uint(17)) == Uint(2**256 - 1) - Uint(
+        17
+    )
     assert Uint(17).__ixor__(Uint(18)) == Uint(3)
 
 
@@ -1749,3 +1810,9 @@ def test_uint_repr() -> None:
 
 def test_uint_str() -> None:
     assert str(Uint(1)) == "1"
+
+
+def test_ulen() -> None:
+    actual = ulen([1, 2, 3])
+    assert isinstance(actual, Uint)
+    assert actual == Uint(3)

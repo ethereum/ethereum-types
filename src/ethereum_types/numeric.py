@@ -3,25 +3,21 @@ Numeric types (mostly integers.)
 """
 
 from numbers import Integral
-from typing import ClassVar, NoReturn, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    ClassVar,
+    Final,
+    Literal,
+    NoReturn,
+    Optional,
+    Sized,
+    SupportsInt,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from .bytes import Bytes, Bytes4, Bytes8, Bytes32, Bytes64
-
-U255_CEILING = 2**255
-"""
-Smallest value that requires 256 bits to represent. Mostly used in signed
-arithmetic operations.
-"""
-
-U256_CEILING = 2**256
-"""
-Smallest value that requires 257 bits to represent. Used when converting a
-[`U256`] in two's complement format to a regular `int` in [`U256.to_signed`].
-
-[`U256`]: ref:ethereum_types.numeric.U256
-[`U256.to_signed`]: ref:ethereum_types.numeric.U256.to_signed
-"""
-
 
 U = TypeVar("U", bound="Uint")
 
@@ -32,7 +28,7 @@ class Uint(Integral):
     """
 
     __slots__ = ("_number",)
-    _number: int
+    _number: Final[int]
 
     @classmethod
     def from_be_bytes(cls: Type[U], buffer: "Bytes") -> U:
@@ -51,14 +47,21 @@ class Uint(Integral):
         return cls(int.from_bytes(buffer, "little"))
 
     def __init__(self, value: Union[int, "Uint"]) -> None:
+        my_value: int
         if isinstance(value, int):
             if value < 0:
                 raise OverflowError()
-            self._number = value
+            my_value = value
         elif isinstance(value, Uint):
-            self._number = value._number
+            my_value = value._number
         else:
             raise TypeError()
+
+        if type(my_value) is not int:
+            my_value = int(
+                my_value
+            )  # TODO: Workaround for partial U256 support
+        self._number = my_value
 
     def __abs__(self) -> "Uint":
         return Uint(self)
@@ -74,8 +77,7 @@ class Uint(Integral):
     def __iadd__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
             return NotImplemented
-        self._number += right._number
-        return self
+        return Uint(self._number + right._number)
 
     def __sub__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
@@ -100,8 +102,7 @@ class Uint(Integral):
             return NotImplemented
         if right._number > self._number:
             raise OverflowError()
-        self._number -= right._number
-        return self
+        return Uint(self._number - right._number)
 
     def __mul__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
@@ -115,8 +116,7 @@ class Uint(Integral):
     def __imul__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
             return NotImplemented
-        self._number *= right._number
-        return self
+        return Uint(self._number * right._number)
 
     def __truediv__(self, other: "Uint") -> float:
         if not isinstance(other, Uint):
@@ -143,8 +143,7 @@ class Uint(Integral):
     def __ifloordiv__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
             return NotImplemented
-        self._number //= right._number
-        return self
+        return Uint(self._number // right._number)
 
     def __mod__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
@@ -161,8 +160,7 @@ class Uint(Integral):
     def __imod__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
             return NotImplemented
-        self._number %= right._number
-        return self
+        return Uint(self._number % right._number)
 
     def __divmod__(self, right: "Uint") -> Tuple["Uint", "Uint"]:
         if not isinstance(right, Uint):
@@ -224,8 +222,7 @@ class Uint(Integral):
         if not isinstance(right, Uint):
             return NotImplemented
 
-        self._number = self._number.__pow__(right._number, modulo_int)
-        return self
+        return Uint(self._number.__pow__(right._number, modulo_int))
 
     def __xor__(self, right: "Uint") -> "Uint":
         if not isinstance(right, Uint):
@@ -243,8 +240,7 @@ class Uint(Integral):
         if not isinstance(right, Uint):
             return NotImplemented
 
-        self._number = self._number.__xor__(right._number)
-        return self
+        return Uint(self._number.__xor__(right._number))
 
     def __and__(self, other: "Uint") -> "Uint":
         if not isinstance(other, Uint):
@@ -279,8 +275,8 @@ class Uint(Integral):
 
         return Uint(self._number.__ror__(other._number))
 
-    def __neg__(self) -> NoReturn:
-        raise TypeError()
+    def __neg__(self) -> int:
+        return -self._number
 
     def __pos__(self) -> "Uint":
         return Uint(self._number)
@@ -290,30 +286,42 @@ class Uint(Integral):
         raise NotImplementedError()
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Uint):
-            return NotImplemented
+        # Unlike the other comparison dunder methods (eg. `__lt__`, `__ge__`,
+        # etc.), `__eq__` is expected to work with any object, so mypy doesn't
+        # detect comparisons between `Uint` and `int` as errors. Instead of
+        # throwing a `TypeError` at runtime, we try to behave sanely and
+        # soundly by converting `other` to an integer if possible, then
+        # comparing.
+        if isinstance(other, Uint):
+            return self._number == other._number
+        elif isinstance(other, SupportsInt):
+            other_int = int(other)
+            if other != other_int:
+                # If `other` doesn't equal `int(other)`, `self` definitely
+                # doesn't equal `other` since `self` has to be an integer.
+                return False
+            return self._number == other_int
+        return NotImplemented
 
-        return self._number == other._number
-
-    def __le__(self, other: object) -> bool:
+    def __le__(self, other: "Uint") -> bool:
         if not isinstance(other, Uint):
             return NotImplemented
 
         return self._number <= other._number
 
-    def __ge__(self, other: object) -> bool:
+    def __ge__(self, other: "Uint") -> bool:
         if not isinstance(other, Uint):
             return NotImplemented
 
         return self._number >= other._number
 
-    def __lt__(self, other: object) -> bool:
+    def __lt__(self, other: "Uint") -> bool:
         if not isinstance(other, Uint):
             return NotImplemented
 
         return self._number < other._number
 
-    def __gt__(self, other: object) -> bool:
+    def __gt__(self, other: "Uint") -> bool:
         if not isinstance(other, Uint):
             return NotImplemented
 
@@ -372,6 +380,20 @@ class Uint(Integral):
         """
         return Bytes32(self._number.to_bytes(32, "big"))
 
+    def to_bytes(
+        self,
+        length: Optional["Uint"] = None,
+        byteorder: Literal["big", "little"] = "big",
+    ) -> "Bytes":
+        """
+        Return an array of bytes representing an integer.
+        """
+        if length is None:
+            length_int = 1
+        else:
+            length_int = int(length)
+        return self._number.to_bytes(length=length_int, byteorder=byteorder)
+
     def to_be_bytes(self) -> "Bytes":
         """
         Converts this arbitrarily sized unsigned integer into its big endian
@@ -404,6 +426,19 @@ class Uint(Integral):
         """
         return Bytes64(self._number.to_bytes(64, "little"))
 
+    def bit_length(self) -> "Uint":
+        """
+        Minimum number of bits required to represent this number in binary.
+        """
+        return Uint(self._number.bit_length())
+
+
+def ulen(input: Sized, /) -> Uint:
+    """
+    Return the number of items in a container, as a `Uint`.
+    """
+    return Uint(len(input))
+
 
 T = TypeVar("T", bound="FixedUint")
 
@@ -420,13 +455,15 @@ class FixedUint(int):
     """
 
     __slots__ = ()
+    # _number: Final[int]
 
-    def __init__(self: T, value: int) -> None:
-        if not isinstance(value, int):
-            raise TypeError()
+    def __init__(self: T, value: SupportsInt) -> None:
+        value_int = int(value)
 
-        if value < 0 or value > self.MAX_VALUE:
+        if value_int < 0 or value_int > self.MAX_VALUE:
             raise OverflowError()
+
+        self._number = value_int
 
     def __radd__(self: T, left: int) -> T:
         return self.__add__(left)
@@ -801,7 +838,7 @@ class U256(FixedUint):
             return int(self)
 
         # -1 * (2's complement of U256 value)
-        return int(self) - U256_CEILING
+        return int(self) - int(U256_CEILING)
 
 
 U256.MAX_VALUE = int.__new__(U256, (2**256) - 1)
@@ -904,3 +941,19 @@ class U64(FixedUint):
 
 
 U64.MAX_VALUE = int.__new__(U64, (2**64) - 1)
+
+
+U255_CEILING = Uint(2**255)
+"""
+Smallest value that requires 256 bits to represent. Mostly used in signed
+arithmetic operations.
+"""
+
+U256_CEILING = Uint(2**256)
+"""
+Smallest value that requires 257 bits to represent. Used when converting a
+[`U256`] in two's complement format to a regular `int` in [`U256.to_signed`].
+
+[`U256`]: ref:ethereum_types.numeric.U256
+[`U256.to_signed`]: ref:ethereum_types.numeric.U256.to_signed
+"""
