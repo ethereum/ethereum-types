@@ -34,7 +34,7 @@ def test_fixed_bytes_init_bytearray() -> None:
     tb = TestBytes(bytearray([0, 0, 0, 0, 0]))
     assert tb == b"\0\0\0\0\0"
     assert isinstance(tb, bytes)
-    assert not isinstance(tb, bytearray)
+    assert not isinstance(tb, bytearray)  # type: ignore[unreachable]
 
 
 def test_fixed_bytes_concat() -> None:

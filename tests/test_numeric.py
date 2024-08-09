@@ -1,487 +1,635 @@
 from math import ceil, floor, trunc
+from typing import Type, TypeAlias, Union
 
 import pytest
 
-from ethereum_types.bytes import Bytes64
-from ethereum_types.numeric import U256, Uint, ulen
+from ethereum_types.bytes import Bytes4, Bytes8, Bytes64
+from ethereum_types.numeric import (
+    U32,
+    U64,
+    U256,
+    FixedUnsigned,
+    Uint,
+    Unsigned,
+    ulen,
+)
+
+FIXED_TYPES = (U256, U64, U32)
+
+UNSIGNED_MARKS = (pytest.mark.unsigned,)
+FIXED_MARKS = (pytest.mark.fixed,) + UNSIGNED_MARKS
+UINT_MARKS = (pytest.mark.arbitrary,) + UNSIGNED_MARKS
+
+FIXED = tuple(pytest.param(x, marks=FIXED_MARKS) for x in FIXED_TYPES)
+UNSIGNED = (pytest.param(Uint, marks=UINT_MARKS),) + FIXED
+
+FromBytesType: TypeAlias = Union[Type[Uint], Type[FixedUnsigned]]
 
 
-def test_uint_new() -> None:
-    value = Uint(5)
-    assert not isinstance(value, int)
-    assert isinstance(value, Uint)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_new(Class: Type[Unsigned]) -> None:
+    value = Class(5)
+    assert not isinstance(value, int)  # type: ignore[unreachable]
+    assert isinstance(value, Class)
+    assert isinstance(value, Unsigned)
 
 
-def test_uint_new_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_new_negative(Class: Type[Unsigned]) -> None:
     with pytest.raises(OverflowError):
-        Uint(-5)
+        Class(-5)
 
 
-def test_uint_new_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_new_float(Class: Type[Unsigned]) -> None:
+    assert Class(0.1) == Class(0)
+    assert Class(1.0) == Class(1)
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_new_max_value(Class: Type[FixedUnsigned]) -> None:
+    value = Class(Class.MAX_VALUE._number)
+    assert isinstance(value, Class)
+    assert isinstance(value, FixedUnsigned)
+    assert value == Class.MAX_VALUE
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_new_too_large(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class(Class.MAX_VALUE._number + 1)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_radd(Class: Type[Unsigned]) -> None:
+    assert Class(9) == Class(4).__radd__(Class(5))
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_radd_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(0.1)  # type: ignore
+        4 + Class(5)  # type: ignore[operator]
 
 
-def test_uint_radd() -> None:
-    assert Uint(9) == Uint(4).__radd__(Uint(5))
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_radd_overflow(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class(Class.MAX_VALUE).__radd__(Class(5))
+    with pytest.raises(OverflowError):
+        Class(5).__radd__(Class(Class.MAX_VALUE))
 
 
-def test_uint_radd_int() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_radd_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        4 + Uint(5)  # type: ignore[operator]
+        (1.0) + Class(5)  # type: ignore[operator]
 
 
-def test_uint_radd_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_add(Class: Type[Unsigned]) -> None:
+    actual = Class(5) + Class(4)
+    assert Class(9) == actual
+    assert isinstance(actual, Class)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_add_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (-4) + Uint(5)  # type: ignore[operator]
+        Class(5) + 4  # type: ignore[operator]
 
 
-def test_uint_radd_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_add_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (1.0) + Uint(5)  # type: ignore[operator]
+        Class(5) + (1.0)  # type: ignore[operator]
 
 
-def test_uint_add() -> None:
-    assert Uint(9) == Uint(5) + Uint(4)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_add_overflow(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class(5) + Class.MAX_VALUE
 
 
-def test_uint_add_int() -> None:
-    with pytest.raises(TypeError):
-        Uint(5) + 4  # type: ignore[operator]
-
-
-def test_uint_add_negative() -> None:
-    with pytest.raises(TypeError):
-        Uint(5) + (-4)  # type: ignore[operator]
-
-
-def test_uint_add_float() -> None:
-    with pytest.raises(TypeError):
-        Uint(5) + (1.0)  # type: ignore[operator]
-
-
-def test_uint_iadd() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_iadd(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     value2 = value
-    value += Uint(4)
-    assert value == Uint(9)
-    assert value2 == Uint(5)
+    value += Class(4)
+    assert isinstance(value, Class)
+    assert value == Class(9)
+    assert value2 == Class(5)
 
 
-def test_uint_iadd_int() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_iadd_int(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
         value += 4  # type: ignore[arg-type]
 
 
-def test_uint_iadd_negative() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_iadd_float(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
-        value += -4  # type: ignore[arg-type]
+        value += 1.0  # type: ignore[arg-type]
 
 
-def test_uint_iadd_float() -> None:
-    value = Uint(5)
-    with pytest.raises(TypeError):
-        value += 1.0  # type: ignore
-
-
-def test_uint_rsub() -> None:
-    assert Uint(1) == Uint(5).__rsub__(Uint(6))
-
-
-def test_uint_rsub_int() -> None:
-    with pytest.raises(TypeError):
-        6 - Uint(5)  # type: ignore[operator]
-
-
-def test_uint_rsub_too_big() -> None:
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_iadd_overflow(Class: Type[FixedUnsigned]) -> None:
+    value = Class(5)
     with pytest.raises(OverflowError):
-        Uint(7).__rsub__(Uint(6))
+        value += Class.MAX_VALUE
+    assert value == Class(5)
 
 
-def test_uint_rsub_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rsub(Class: Type[Unsigned]) -> None:
+    actual = Class(5).__rsub__(Class(6))
+    assert isinstance(actual, Class)
+    assert Class(1) == actual
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rsub_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (-4) - Uint(5)  # type: ignore[operator]
+        6 - Class(5)  # type: ignore[operator]
 
 
-def test_uint_rsub_float() -> None:
-    with pytest.raises(TypeError):
-        (6.0) - Uint(5)  # type: ignore[operator]
-
-
-def test_uint_sub() -> None:
-    with pytest.raises(TypeError):
-        Uint(5) - 4  # type: ignore[operator]
-
-
-def test_uint_sub_too_big() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rsub_underflow(Class: Type[Unsigned]) -> None:
     with pytest.raises(OverflowError):
-        Uint(5) - Uint(6)
+        Class(7).__rsub__(Class(6))
 
 
-def test_uint_sub_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rsub_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(5) - (-4)  # type: ignore[operator]
+        (6.0) - Class(5)  # type: ignore[operator]
 
 
-def test_uint_sub_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_sub(Class: Type[Unsigned]) -> None:
+    actual = Class(5) - Class(4)
+    assert Class(1) == actual
+    assert isinstance(actual, Class)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_sub_underflow(Class: Type[Unsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class(5) - Class(6)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_sub_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(5) - (1.0)  # type: ignore[operator]
+        Class(5) - (-4)  # type: ignore[operator]
 
 
-def test_uint_isub() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_sub_float(Class: Type[Unsigned]) -> None:
+    with pytest.raises(TypeError):
+        Class(5) - (1.0)  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_isub(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     value2 = value
-    value -= Uint(4)
-    assert isinstance(value, Uint)
-    assert value == Uint(1)
-    assert value2 == Uint(5)
+    value -= Class(4)
+    assert isinstance(value, Class)
+    assert value == Class(1)
+    assert value2 == Class(5)
 
 
-def test_uint_isub_too_big() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_isub_underflow(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(OverflowError):
-        value -= Uint(6)
+        value -= Class(6)
+    assert value == Class(5)
 
 
-def test_uint_isub_negative() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_isub_int(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
         value -= -4  # type: ignore[arg-type]
+    assert value == Class(5)
 
 
-def test_uint_isub_float() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_isub_float(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
-        value -= 1.0  # type: ignore
+        value -= 1.0  # type: ignore[arg-type]
+    assert value == Class(5)
 
 
-def test_uint_rmul() -> None:
-    actual = Uint(4).__rmul__(Uint(5))
-    assert actual == Uint(20)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rmul(Class: Type[Unsigned]) -> None:
+    actual = Class(4).__rmul__(Class(5))
+    assert actual == Class(20)
+    assert isinstance(actual, Class)
 
 
-def test_uint_rmul_int() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rmul_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        4 * Uint(5)  # type: ignore[operator]
+        4 * Class(5)  # type: ignore[operator]
 
 
-def test_uint_rmul_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rmul_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (-4) * Uint(5)  # type: ignore[operator]
+        (1.0) * Class(5)  # type: ignore[operator]
 
 
-def test_uint_rmul_float() -> None:
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_rmul_overflow(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class.MAX_VALUE.__rmul__(Class(5))
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_mul(Class: Type[Unsigned]) -> None:
+    value = Class(5) * Class(4)
+    assert isinstance(value, Class)
+    assert value == Class(20)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_mul_int(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
-        (1.0) * Uint(5)  # type: ignore[operator]
+        value * 4  # type: ignore[operator]
 
 
-def test_uint_mul() -> None:
-    value = Uint(5) * Uint(4)
-    assert isinstance(value, Uint)
-    assert value == Uint(20)
-
-
-def test_uint_mul_int() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_mul_float(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
-        Uint(5) * 4  # type: ignore[operator]
+        value * (1.0)  # type: ignore[operator]
 
 
-def test_uint_mul_negative() -> None:
-    with pytest.raises(TypeError):
-        Uint(5) * (-4)  # type: ignore[operator]
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_mul_overflow(Class: Type[FixedUnsigned]) -> None:
+    four = Class(4)
+    with pytest.raises(OverflowError):
+        Class.MAX_VALUE * four
 
 
-def test_uint_mul_float() -> None:
-    with pytest.raises(TypeError):
-        Uint(5) * (1.0)  # type: ignore[operator]
-
-
-def test_uint_imul() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_imul(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     value2 = value
-    value *= Uint(4)
-    assert isinstance(value, Uint)
-    assert value == Uint(20)
-    assert value2 == Uint(5)
+    value *= Class(4)
+    assert isinstance(value, Class)
+    assert value == Class(20)
+    assert value2 == Class(5)
 
 
-def test_uint_imul_int() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_imul_int(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
         value *= 4  # type: ignore[arg-type]
+    assert value == Class(5)
 
 
-def test_uint_imul_negative() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_imul_float(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
-        value *= -4  # type: ignore[arg-type]
+        value *= 1.0  # type: ignore[arg-type]
+    assert value == Class(5)
 
 
-def test_uint_imul_float() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_imul_overflow(Class: Type[FixedUnsigned]) -> None:
+    value = Class(5)
+    with pytest.raises(OverflowError):
+        value *= Class.MAX_VALUE
+    assert value == Class(5)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_floordiv(Class: Type[Unsigned]) -> None:
+    value = Class(5) // Class(2)
+    assert isinstance(value, Class)
+    assert value == Class(2)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_floordiv_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        value *= 1.0  # type: ignore
+        Class(5) // 2  # type: ignore[operator]
 
 
-def test_uint_floordiv() -> None:
-    value = Uint(5) // Uint(2)
-    assert isinstance(value, Uint)
-    assert value == Uint(2)
-
-
-def test_uint_floordiv_int() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_floordiv_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(5) // 2  # type: ignore[operator]
+        Class(5) // 2.0  # type: ignore[operator]
 
 
-def test_uint_floordiv_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rfloordiv(Class: Type[Unsigned]) -> None:
+    value = Class(2).__rfloordiv__(Class(5))
+    assert isinstance(value, Class)
+    assert value == Class(2)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rfloordiv_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(5) // -2  # type: ignore[operator]
+        (-2) // Class(5)  # type: ignore[operator]
 
 
-def test_uint_floordiv_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rfloordiv_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(5) // 2.0  # type: ignore[operator]
+        5.0 // Class(2)  # type: ignore[operator]
 
 
-def test_uint_rfloordiv() -> None:
-    value = Uint(2).__rfloordiv__(Uint(5))
-    assert isinstance(value, Uint)
-    assert value == Uint(2)
-
-
-def test_uint_rfloordiv_negative() -> None:
-    with pytest.raises(TypeError):
-        (-2) // Uint(5)  # type: ignore[operator]
-
-
-def test_uint_rfloordiv_float() -> None:
-    with pytest.raises(TypeError):
-        5.0 // Uint(2)  # type: ignore[operator]
-
-
-def test_uint_ifloordiv() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ifloordiv(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     value2 = value
-    value //= Uint(2)
-    assert isinstance(value, Uint)
-    assert value == Uint(2)
-    assert value2 == Uint(5)
+    value //= Class(2)
+    assert isinstance(value, Class)
+    assert value == Class(2)
+    assert value2 == Class(5)
 
 
-def test_uint_ifloordiv_negative() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ifloordiv_int(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
         value //= -2  # type: ignore[arg-type]
+    assert value == Class(5)
 
 
-def test_uint_rmod() -> None:
-    value = Uint(2).__rmod__(Uint(5))
-    assert isinstance(value, Uint)
-    assert value == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rmod(Class: Type[Unsigned]) -> None:
+    value = Class(2).__rmod__(Class(5))
+    assert isinstance(value, Class)
+    assert value == Class(1)
 
 
-def test_uint_rmod_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rmod_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (-4) % Uint(5)  # type: ignore[operator]
+        (-4) % Class(5)  # type: ignore[operator]
 
 
-def test_uint_rmod_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rmod_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (6.0) % Uint(5)  # type: ignore[operator]
+        (6.0) % Class(5)  # type: ignore[operator]
 
 
-def test_uint_mod() -> None:
-    value = Uint(5) % Uint(4)
-    assert isinstance(value, Uint)
-    assert value == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_mod(Class: Type[Unsigned]) -> None:
+    value = Class(5) % Class(4)
+    assert isinstance(value, Class)
+    assert value == Class(1)
 
 
-def test_uint_mod_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_mod_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(5) % (-4)  # type: ignore[operator]
+        Class(5) % (-4)  # type: ignore[operator]
 
 
-def test_uint_mod_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_mod_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(5) % (1.0)  # type: ignore[operator]
+        Class(5) % (1.0)  # type: ignore[operator]
 
 
-def test_uint_imod() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_imod(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     value2 = value
-    value %= Uint(4)
-    assert isinstance(value, Uint)
-    assert value == Uint(1)
-    assert value2 == Uint(5)
+    value %= Class(4)
+    assert isinstance(value, Class)
+    assert value == Class(1)
+    assert value2 == Class(5)
 
 
-def test_uint_imod_negative() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_imod_int(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
         value %= -4  # type: ignore[arg-type]
+    assert value == Class(5)
 
 
-def test_uint_imod_float() -> None:
-    value = Uint(5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_imod_float(Class: Type[Unsigned]) -> None:
+    value = Class(5)
     with pytest.raises(TypeError):
-        value %= 1.0  # type: ignore
+        value %= 1.0  # type: ignore[arg-type]
+    assert value == Class(5)
 
 
-def test_uint_divmod() -> None:
-    quotient, remainder = divmod(Uint(5), Uint(2))
-    assert isinstance(quotient, Uint)
-    assert isinstance(remainder, Uint)
-    assert quotient == Uint(2)
-    assert remainder == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_divmod(Class: Type[Unsigned]) -> None:
+    quotient, remainder = divmod(Class(5), Class(2))
+    assert isinstance(quotient, Class)
+    assert isinstance(remainder, Class)
+    assert quotient == Class(2)
+    assert remainder == Class(1)
 
 
-def test_uint_divmod_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_divmod_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        divmod(Uint(5), -2)  # type: ignore[operator]
+        divmod(Class(5), -2)  # type: ignore[operator]
 
 
-def test_uint_divmod_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_divmod_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        divmod(Uint(5), 2.0)  # type: ignore[operator]
+        divmod(Class(5), 2.0)  # type: ignore[operator]
 
 
-def test_uint_rdivmod() -> None:
-    quotient, remainder = Uint(2).__rdivmod__(Uint(5))
-    assert quotient == Uint(2)
-    assert remainder == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rdivmod(Class: Type[Unsigned]) -> None:
+    quotient, remainder = Class(2).__rdivmod__(Class(5))
+    assert quotient == Class(2)
+    assert remainder == Class(1)
 
 
-def test_uint_rdivmod_int() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rdivmod_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        divmod(5, Uint(2))  # type: ignore[operator]
+        divmod(5, Class(2))  # type: ignore[operator]
 
 
-def test_uint_rdivmod_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rdivmod_float(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        divmod(-5, Uint(2))  # type: ignore[operator]
+        divmod(5.0, Class(2))  # type: ignore[operator]
 
 
-def test_uint_rdivmod_float() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_pow(Class: Type[Unsigned]) -> None:
+    value = Class(3) ** Class(2)
+    assert isinstance(value, Class)
+    assert value == Class(9)
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_pow_overflow(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class(340282366920938463463374607431768211456) ** Class(3)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_pow_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        divmod(5.0, Uint(2))  # type: ignore[operator]
+        Class(3) ** -2  # type: ignore[operator]
 
 
-def test_uint_pow() -> None:
-    value = Uint(3) ** Uint(2)
-    assert isinstance(value, Uint)
-    assert value == Uint(9)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_pow_modulo(Class: Type[Unsigned]) -> None:
+    value = pow(Class(4), Class(2), Class(3))
+    assert isinstance(value, Class)
+    assert value == Class(1)
 
 
-def test_uint_pow_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_pow_modulo_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(3) ** -2  # type: ignore[operator]
+        pow(Class(4), Class(2), -3)  # type: ignore[misc]
 
-
-def test_uint_pow_modulo() -> None:
-    value = pow(Uint(4), Uint(2), Uint(3))
-    assert isinstance(value, Uint)
-    assert value == Uint(1)
-
-
-def test_uint_pow_modulo_negative() -> None:
     with pytest.raises(TypeError):
-        pow(Uint(4), 2, -3)  # type: ignore[misc]
+        pow(Class(4), 2, Class(3))  # type: ignore[misc]
 
 
-def test_uint_rpow() -> None:
-    value = Uint(2).__rpow__(Uint(3))
-    assert isinstance(value, Uint)
-    assert value == Uint(9)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rpow(Class: Type[Unsigned]) -> None:
+    value = Class(2).__rpow__(Class(3))
+    assert isinstance(value, Class)
+    assert value == Class(9)
 
 
-def test_uint_rpow_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rpow_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (-3) ** Uint(2)  # type: ignore[operator]
+        (-3) ** Class(2)  # type: ignore[operator]
 
 
-def test_uint_rpow_modulo() -> None:
-    value = Uint.__rpow__(Uint(2), Uint(4), Uint(3))
-    assert isinstance(value, Uint)
-    assert value == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rpow_modulo(Class: Type[Unsigned]) -> None:
+    value = Class.__rpow__(Class(2), Class(4), Class(3))
+    assert isinstance(value, Class)
+    assert value == Class(1)
 
 
-def test_uint_rpow_modulo_negative() -> None:
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_rpow_overflow(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class.MAX_VALUE ** Class(2)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rpow_modulo_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint.__rpow__(Uint(2), 4, -3)  # type: ignore[operator]
+        Class.__rpow__(Class(2), Class(4), -3)  # type: ignore[operator]
 
 
-def test_uint_ipow() -> None:
-    value = Uint(3)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ipow(Class: Type[Unsigned]) -> None:
+    value = Class(3)
     value2 = value
-    value **= Uint(2)
-    assert isinstance(value, Uint)
-    assert value == Uint(9)
-    assert value2 == Uint(3)
+    value **= Class(2)
+    assert isinstance(value, Class)
+    assert value == Class(9)
+    assert value2 == Class(3)
 
 
-def test_uint_ipow_negative() -> None:
-    value = Uint(3)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ipow_int(Class: Type[Unsigned]) -> None:
+    value = Class(3)
     with pytest.raises(TypeError):
         value **= -2  # type: ignore[arg-type]
 
 
-def test_uint_ipow_modulo() -> None:
-    value = Uint(4).__ipow__(Uint(2), Uint(3))
-    assert isinstance(value, Uint)
-    assert value == Uint(1)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_ipow_overflow(Class: Type[FixedUnsigned]) -> None:
+    value = Class.MAX_VALUE
+    with pytest.raises(OverflowError):
+        value **= Class(3)
 
 
-def test_uint_ipow_modulo_negative() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ipow_modulo(Class: Type[Unsigned]) -> None:
+    value = Class(4).__ipow__(Class(2), Class(3))
+    assert isinstance(value, Class)
+    assert value == Class(1)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ipow_modulo_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(4).__ipow__(Uint(2), -3)  # type: ignore[arg-type]
+        Class(4).__ipow__(Class(2), -3)  # type: ignore[arg-type]
 
 
-def test_uint_bit_length() -> None:
-    assert Uint(3).bit_length() == Uint(2)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bit_length(Class: Type[Unsigned]) -> None:
+    assert Class(3).bit_length() == Class(2)
 
 
-def test_uint_to_bytes_zero() -> None:
-    encoded = Uint(0).to_bytes()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_bytes_zero(Class: Type[Unsigned]) -> None:
+    encoded = Class(0).to_bytes()
     assert encoded == bytes([0])
 
 
-def test_uint_to_bytes() -> None:
-    encoded = Uint(1).to_bytes(length=Uint(5))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_bytes(Class: Type[Unsigned]) -> None:
+    encoded = Class(1).to_bytes(length=Uint(5))
     assert encoded == bytes([0, 0, 0, 0, 1])
 
 
-def test_uint_to_be_bytes_zero() -> None:
-    encoded = Uint(0).to_be_bytes()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes_zero(Class: Type[Unsigned]) -> None:
+    encoded = Class(0).to_be_bytes()
     assert encoded == bytes([])
 
 
-def test_uint_to_be_bytes_one() -> None:
-    encoded = Uint(1).to_be_bytes()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes_one(Class: Type[Unsigned]) -> None:
+    encoded = Class(1).to_be_bytes()
     assert encoded == bytes([1])
 
 
-def test_uint_to_be_bytes_is_big_endian() -> None:
-    encoded = Uint(0xABCD).to_be_bytes()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes_is_big_endian(Class: Type[Unsigned]) -> None:
+    encoded = Class(0xABCD).to_be_bytes()
     assert encoded == bytes([0xAB, 0xCD])
 
 
-def test_uint_to_be_bytes64_zero() -> None:
-    actual = Uint(0).to_be_bytes64()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes64_zero(Class: Type[Unsigned]) -> None:
+    actual = Class(0).to_be_bytes64()
     expected = Bytes64([0] * 64)
     assert isinstance(actual, Bytes64)
     assert actual == expected
 
 
-def test_uint_to_be_bytes64_one() -> None:
-    actual = Uint(1).to_be_bytes64()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes64_one(Class: Type[Unsigned]) -> None:
+    actual = Class(1).to_be_bytes64()
     expected = Bytes64([0] * 63 + [1])
     assert isinstance(actual, Bytes64)
     assert actual == expected
 
 
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
 def test_uint_to_be_bytes64_max_value() -> None:
     actual = Uint(2**512 - 1).to_be_bytes64()
     expected = Bytes64([0xFF] * 64)
@@ -489,6 +637,8 @@ def test_uint_to_be_bytes64_max_value() -> None:
     assert actual == expected
 
 
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
 def test_uint_to_be_bytes64_too_big() -> None:
     value = Uint(2**512)
 
@@ -496,923 +646,303 @@ def test_uint_to_be_bytes64_too_big() -> None:
         value.to_be_bytes64()
 
 
-def test_uint_to_be_bytes32_zero() -> None:
-    encoded = Uint(0).to_be_bytes32()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes32_zero(Class: Type[Unsigned]) -> None:
+    encoded = Class(0).to_be_bytes32()
     assert encoded == bytes([0] * 32)
 
 
-def test_uint_to_be_bytes32_one() -> None:
-    encoded = Uint(1).to_be_bytes32()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes32_one(Class: Type[Unsigned]) -> None:
+    encoded = Class(1).to_be_bytes32()
     assert encoded == bytes([0] * 31 + [1])
 
 
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
 def test_uint_to_be_bytes32_max_value() -> None:
     encoded = Uint(2**256 - 1).to_be_bytes32()
-    assert encoded == bytes(
-        [
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-        ]
-    )
+    assert encoded == bytes([0xFF] * 32)
 
 
-def test_uint_from_be_bytes_empty() -> None:
-    value = Uint.from_be_bytes(b"")
-    assert value == Uint(0)
+@pytest.mark.unsigned
+@pytest.mark.fixed
+def test_u256_to_be_bytes32_max_value() -> None:
+    encoded = U256(2**256 - 1).to_be_bytes32()
+    assert encoded == bytes([0xFF] * 32)
 
 
-def test_uint_from_be_bytes_one() -> None:
-    value = Uint.from_be_bytes(bytes([1]))
-    assert value == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_from_be_bytes_empty(Class: FromBytesType) -> None:
+    value = Class.from_be_bytes(b"")
+    assert value == Class(0)
 
 
-def test_uint_from_be_bytes_is_big_endian() -> None:
-    value = Uint.from_be_bytes(bytes([0xAB, 0xCD]))
-    assert value == Uint(0xABCD)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_from_be_bytes_one(Class: FromBytesType) -> None:
+    value = Class.from_be_bytes(bytes([1]))
+    assert value == Class(1)
 
 
-def test_uint_from_le_bytes_empty() -> None:
-    value = Uint.from_le_bytes(b"")
-    assert value == Uint(0)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_from_be_bytes_is_big_endian(Class: FromBytesType) -> None:
+    value = Class.from_be_bytes(bytes([0xAB, 0xCD]))
+    assert value == Class(0xABCD)
 
 
-def test_uint_from_le_bytes_one() -> None:
-    value = Uint.from_le_bytes(bytes([1]))
-    assert value == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_from_le_bytes_empty(Class: FromBytesType) -> None:
+    value = Class.from_le_bytes(b"")
+    assert value == Class(0)
 
 
-def test_uint_from_le_bytes_is_big_endian() -> None:
-    value = Uint.from_le_bytes(bytes([0xAB, 0xCD]))
-    assert value == Uint(0xCDAB)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_from_le_bytes_one(Class: FromBytesType) -> None:
+    value = Class.from_le_bytes(bytes([1]))
+    assert value == Class(1)
 
 
-def test_u256_new() -> None:
-    value = U256(5)
-    assert isinstance(value, int)
-    assert isinstance(value, U256)
-    assert value == 5
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_from_le_bytes_is_little_endian(Class: FromBytesType) -> None:
+    value = Class.from_le_bytes(bytes([0xAB, 0xCD]))
+    assert value == Class(0xCDAB)
 
 
-def test_u256_new_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(-5)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_abs(Class: Type[Unsigned]) -> None:
+    assert abs(Class(1)) == Class(1)
 
 
-def test_u256_new_float() -> None:
-    with pytest.raises(TypeError):
-        U256(0.1)  # type: ignore
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_abs_same(Class: Type[Unsigned]) -> None:
+    a = Class(1)
+    b = abs(a)
+    a += Class(1)
+    assert a == Class(2)
+    assert b == Class(1)
 
 
-def test_u256_new_max_value() -> None:
-    value = U256(2**256 - 1)
-    assert isinstance(value, U256)
-    assert value == 2**256 - 1
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_trunc(Class: Type[Unsigned]) -> None:
+    assert trunc(Class(1)) == Class(1)
 
 
-def test_u256_new_too_large() -> None:
-    with pytest.raises(OverflowError):
-        U256(2**256)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_trunc_same(Class: Type[Unsigned]) -> None:
+    a = Class(1)
+    b = trunc(a)
+    a += Class(1)
+    assert a == Class(2)
+    assert b == Class(1)
 
 
-def test_u256_radd() -> None:
-    value = 4 + U256(5)
-    assert isinstance(value, U256)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_round(Class: Type[Unsigned]) -> None:
+    assert round(Class(1)) == Class(1)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_round_same(Class: Type[Unsigned]) -> None:
+    a = Class(1)
+    b = round(a)
+    a += Class(1)
+    assert a == Class(2)
+    assert b == Class(1)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_truediv_int(Class: Type[Unsigned]) -> None:
+    assert Class(1).__truediv__(2) is NotImplemented  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rtruediv_int(Class: Type[Unsigned]) -> None:
+    assert Class(1).__rtruediv__(2) is NotImplemented  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_truediv(Class: Type[Unsigned]) -> None:
+    expected = (1).__truediv__(2)
+    actual = Class(1).__truediv__(Class(2))
+    assert expected == actual
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rtruediv(Class: Type[Unsigned]) -> None:
+    expected = (1).__rtruediv__(2)
+    actual = Class(1).__rtruediv__(Class(2))
+    assert expected == actual
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_add(Class: Type[FixedUnsigned]) -> None:
+    value = Class(5).wrapping_add(Class(4))
+    assert isinstance(value, Class)
     assert value == 9
 
 
-def test_u256_radd_overflow() -> None:
-    with pytest.raises(OverflowError):
-        (2**256 - 1) + U256(5)
-
-
-def test_u256_radd_negative() -> None:
-    with pytest.raises(OverflowError):
-        (-4) + U256(5)
-
-
-def test_u256_radd_float() -> None:
-    value = (1.0) + U256(5)
-    assert not isinstance(value, int)
-    assert value == 6.0
-
-
-def test_u256_add() -> None:
-    value = U256(5) + 4
-    assert isinstance(value, U256)
-    assert value == 9
-
-
-def test_u256_add_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) + (2**256 - 1)
-
-
-def test_u256_add_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) + (-4)
-
-
-def test_u256_add_float() -> None:
-    value = U256(5) + (1.0)
-    assert not isinstance(value, int)
-    assert value == 6.0
-
-
-def test_u256_wrapping_add() -> None:
-    value = U256(5).wrapping_add(4)
-    assert isinstance(value, U256)
-    assert value == 9
-
-
-def test_u256_wrapping_add_overflow() -> None:
-    value = U256(5).wrapping_add(2**256 - 1)
-    assert isinstance(value, U256)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_add_overflow(Class: Type[FixedUnsigned]) -> None:
+    value = Class(5).wrapping_add(Class.MAX_VALUE)
+    assert isinstance(value, Class)
     assert value == 4
 
 
-def test_u256_wrapping_add_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5).wrapping_add(-4)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_add_int(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(TypeError):
+        Class(5).wrapping_add(-4)  # type: ignore[arg-type]
 
 
-def test_u256_iadd() -> None:
-    value = U256(5)
-    value2 = value
-    value += 4
-    assert isinstance(value, U256)
-    assert value == 9
-    assert value2 == U256(5)
-
-
-def test_u256_iadd_negative() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value += -4
-
-
-def test_u256_iadd_float() -> None:
-    value = U256(5)
-    value += 1.0  # type: ignore
-    assert not isinstance(value, int)
-    assert value == 6.0
-
-
-def test_u256_iadd_overflow() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value += 2**256 - 1
-
-
-def test_u256_rsub() -> None:
-    value = 5 - U256(4)
-    assert isinstance(value, U256)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_sub(Class: Type[FixedUnsigned]) -> None:
+    value = Class(5).wrapping_sub(Class(4))
+    assert isinstance(value, Class)
     assert value == 1
 
 
-def test_u256_rsub_underflow() -> None:
-    with pytest.raises(OverflowError):
-        (0) - U256(1)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_sub_underflow(Class: Type[FixedUnsigned]) -> None:
+    value = Class(5).wrapping_sub(Class(6))
+    assert isinstance(value, Class)
+    assert value == Class.MAX_VALUE
 
 
-def test_u256_rsub_negative() -> None:
-    with pytest.raises(OverflowError):
-        (-4) - U256(5)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_sub_int(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(TypeError):
+        Class(5).wrapping_sub(-4)  # type: ignore[arg-type]
 
 
-def test_u256_rsub_float() -> None:
-    value = (5.0) - U256(1)
-    assert not isinstance(value, int)
-    assert value == 4.0
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_mul(Class: Type[FixedUnsigned]) -> None:
+    value = Class(5).wrapping_mul(Class(4))
+    assert isinstance(value, Class)
+    assert value == Class(20)
 
 
-def test_u256_sub() -> None:
-    value = U256(5) - 4
-    assert isinstance(value, U256)
-    assert value == 1
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_mul_overflow(Class: Type[FixedUnsigned]) -> None:
+    value = Class.MAX_VALUE.wrapping_mul(Class(4))
+    expected = Class.MAX_VALUE - Class(3)
+    assert isinstance(value, Class)
+    assert value == expected
 
 
-def test_u256_sub_underflow() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) - 6
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_mul_int(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(TypeError):
+        Class(5).wrapping_mul(-4)  # type: ignore[arg-type]
 
 
-def test_u256_sub_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) - (-4)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_pow(Class: Type[FixedUnsigned]) -> None:
+    value = Class(3).wrapping_pow(Class(2))
+    assert isinstance(value, Class)
+    assert value == Class(9)
 
 
-def test_u256_sub_float() -> None:
-    value = U256(5) - (1.0)
-    assert not isinstance(value, int)
-    assert value == 4.0
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_pow_overflow(Class: Type[FixedUnsigned]) -> None:
+    base = (Class.MAX_VALUE // Class(3)) - Class(5)
+    actual = base.wrapping_pow(Class(3))
+    expected = pow(int(base), 3, int(Class.MAX_VALUE) + 1)
+    assert isinstance(actual, Class)
+    assert expected == actual
 
 
-def test_u256_wrapping_sub() -> None:
-    value = U256(5).wrapping_sub(4)
-    assert isinstance(value, U256)
-    assert value == 1
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_pow_int(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(TypeError):
+        Class(3).wrapping_pow(-2)  # type: ignore[arg-type]
 
 
-def test_u256_wrapping_sub_underflow() -> None:
-    value = U256(5).wrapping_sub(6)
-    assert isinstance(value, U256)
-    assert value == 2**256 - 1
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_pow_modulo(Class: Type[FixedUnsigned]) -> None:
+    value = Class(4).wrapping_pow(Class(2), Class(3))
+    assert isinstance(value, Class)
+    assert value == Class(1)
 
 
-def test_u256_wrapping_sub_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5).wrapping_sub(-4)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_wrapping_pow_modulo_int(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(TypeError):
+        Class(4).wrapping_pow(Class(2), 2)  # type: ignore[arg-type]
 
 
-def test_u256_isub() -> None:
-    value = U256(5)
-    value2 = value
-    value -= 4
-    assert isinstance(value, U256)
-    assert value == 1
-    assert value2 == U256(5)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_from_be_bytes_too_large(Class: Type[FixedUnsigned]) -> None:
+    bits = Class.MAX_VALUE._number.bit_length()
+    byte_count = (bits + 7) // 8
+    byte_count += 1
 
-
-def test_u256_isub_negative() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value -= -4
-
-
-def test_u256_isub_float() -> None:
-    value = U256(5)
-    value -= 1.0  # type: ignore
-    assert not isinstance(value, int)
-    assert value == 4.0
-
-
-def test_u256_isub_underflow() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value -= 6
-
-
-def test_u256_rmul() -> None:
-    value = 4 * U256(5)
-    assert isinstance(value, U256)
-    assert value == 20
-
-
-def test_u256_rmul_overflow() -> None:
-    with pytest.raises(OverflowError):
-        (2**256 - 1) * U256(5)
-
-
-def test_u256_rmul_negative() -> None:
-    with pytest.raises(OverflowError):
-        (-4) * U256(5)
-
-
-def test_u256_rmul_float() -> None:
-    value = (1.0) * U256(5)
-    assert not isinstance(value, int)
-    assert value == 5.0
-
-
-def test_u256_mul() -> None:
-    value = U256(5) * 4
-    assert isinstance(value, U256)
-    assert value == 20
-
-
-def test_u256_mul_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256.MAX_VALUE * 4
-
-
-def test_u256_mul_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) * (-4)
-
-
-def test_u256_mul_float() -> None:
-    value = U256(5) * (1.0)
-    assert not isinstance(value, int)
-    assert value == 5.0
-
-
-def test_u256_wrapping_mul() -> None:
-    value = U256(5).wrapping_mul(4)
-    assert isinstance(value, U256)
-    assert value == 20
-
-
-def test_u256_wrapping_mul_overflow() -> None:
-    value = U256.MAX_VALUE.wrapping_mul(4)
-    assert isinstance(value, U256)
-    assert (
-        value
-        == 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC
-    )
-
-
-def test_u256_wrapping_mul_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5).wrapping_mul(-4)
-
-
-def test_u256_imul() -> None:
-    value = U256(5)
-    value2 = value
-    value *= 4
-    assert isinstance(value, U256)
-    assert value == 20
-    assert value2 == U256(5)
-
-
-def test_u256_imul_negative() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value *= -4
-
-
-def test_u256_imul_arg_overflow() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value *= 2**256
-
-
-def test_u256_imul_float() -> None:
-    value = U256(5)
-    value *= 1.0  # type: ignore
-    assert not isinstance(value, int)
-    assert value == 5.0
-
-
-def test_u256_imul_overflow() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value *= 2**256 - 1
-
-
-def test_u256_floordiv() -> None:
-    value = U256(5) // 2
-    assert isinstance(value, U256)
-    assert value == 2
-
-
-def test_u256_floordiv_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) // (2**256)
-
-
-def test_u256_floordiv_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) // -2
-
-
-def test_u256_floordiv_float() -> None:
-    value = U256(5) // 2.0
-    assert not isinstance(value, U256)
-    assert value == 2
-
-
-def test_u256_rfloordiv() -> None:
-    value = 5 // U256(2)
-    assert isinstance(value, U256)
-    assert value == 2
-
-
-def test_u256_rfloordiv_overflow() -> None:
-    with pytest.raises(OverflowError):
-        (2**256) // U256(2)
-
-
-def test_u256_rfloordiv_negative() -> None:
-    with pytest.raises(OverflowError):
-        (-2) // U256(5)
-
-
-def test_u256_rfloordiv_float() -> None:
-    value = 5.0 // U256(2)
-    assert not isinstance(value, U256)
-    assert value == 2
-
-
-def test_u256_ifloordiv() -> None:
-    value = U256(5)
-    value2 = value
-    value //= 2
-    assert isinstance(value, U256)
-    assert value == 2
-    assert value2 == U256(5)
-
-
-def test_u256_ifloordiv_negative() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value //= -2
-
-
-def test_u256_ifloordiv_overflow() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value //= 2**256
-
-
-def test_u256_rmod() -> None:
-    value = 6 % U256(5)
-    assert isinstance(value, U256)
-    assert value == 1
-
-
-def test_u256_rmod_float() -> None:
-    value = (6.0) % U256(5)
-    assert not isinstance(value, int)
-    assert value == 1.0
-
-
-def test_u256_mod() -> None:
-    value = U256(5) % 4
-    assert isinstance(value, U256)
-    assert value == 1
-
-
-def test_u256_mod_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) % (2**256)
-
-
-def test_u256_mod_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(5) % (-4)
-
-
-def test_u256_mod_float() -> None:
-    value = U256(5) % (1.0)
-    assert not isinstance(value, int)
-    assert value == 0.0
-
-
-def test_u256_imod() -> None:
-    value = U256(5)
-    value2 = value
-    value %= 4
-    assert isinstance(value, U256)
-    assert value == 1
-    assert value2 == U256(5)
-
-
-def test_u256_imod_overflow() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value %= 2**256
-
-
-def test_u256_imod_negative() -> None:
-    value = U256(5)
-    with pytest.raises(OverflowError):
-        value %= -4
-
-
-def test_u256_imod_float() -> None:
-    value = U256(5)
-    value %= 1.0  # type: ignore
-    assert not isinstance(value, int)
-    assert value == 0.0
-
-
-def test_u256_divmod() -> None:
-    quotient, remainder = divmod(U256(5), 2)
-    assert isinstance(quotient, U256)
-    assert isinstance(remainder, U256)
-    assert quotient == 2
-    assert remainder == 1
-
-
-def test_u256_divmod_overflow() -> None:
-    with pytest.raises(OverflowError):
-        divmod(U256(5), 2**256)
-
-
-def test_u256_divmod_negative() -> None:
-    with pytest.raises(OverflowError):
-        divmod(U256(5), -2)
-
-
-def test_u256_divmod_float() -> None:
-    quotient, remainder = divmod(U256(5), 2.0)
-    assert not isinstance(quotient, U256)
-    assert not isinstance(remainder, U256)
-    assert quotient == 2
-    assert remainder == 1
-
-
-def test_u256_rdivmod() -> None:
-    quotient, remainder = divmod(5, U256(2))
-    assert isinstance(quotient, U256)
-    assert isinstance(remainder, U256)
-    assert quotient == 2
-    assert remainder == 1
-
-
-def test_u256_rdivmod_overflow() -> None:
-    with pytest.raises(OverflowError):
-        divmod(2**256, U256(2))
-
-
-def test_u256_rdivmod_negative() -> None:
-    with pytest.raises(OverflowError):
-        divmod(-5, U256(2))
-
-
-def test_u256_rdivmod_float() -> None:
-    quotient, remainder = divmod(5.0, U256(2))
-    assert not isinstance(quotient, U256)
-    assert not isinstance(remainder, U256)
-    assert quotient == 2
-    assert remainder == 1
-
-
-def test_u256_pow() -> None:
-    value = U256(3) ** 2
-    assert isinstance(value, U256)
-    assert value == 9
-
-
-def test_u256_pow_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256(340282366920938463463374607431768211456) ** 3
-
-
-def test_u256_pow_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(3) ** -2
-
-
-def test_u256_pow_modulo() -> None:
-    value = pow(U256(4), 2, 3)
-    assert isinstance(value, U256)
-    assert value == 1
-
-
-def test_u256_pow_modulo_overflow() -> None:
-    with pytest.raises(OverflowError):
-        pow(U256(4), 2, 2**257)
-
-
-def test_u256_pow_modulo_negative() -> None:
-    with pytest.raises(OverflowError):
-        pow(U256(4), 2, -3)
-
-
-def test_u256_rpow() -> None:
-    value = 3 ** U256(2)
-    assert isinstance(value, U256)
-    assert value == 9
-
-
-def test_u256_rpow_overflow() -> None:
-    with pytest.raises(OverflowError):
-        (2**256) ** U256(2)
-
-
-def test_u256_rpow_negative() -> None:
-    with pytest.raises(OverflowError):
-        (-3) ** U256(2)
-
-
-def test_u256_rpow_modulo() -> None:
-    value = U256.__rpow__(U256(2), 4, 3)
-    assert isinstance(value, int)
-    assert value == 1
-
-
-def test_u256_rpow_modulo_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256.__rpow__(U256(2), 4, 2**256 + 1)
-
-
-def test_u256_rpow_modulo_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256.__rpow__(U256(2), 4, -3)
-
-
-def test_u256_ipow() -> None:
-    value = U256(3)
-    value2 = value
-    value **= 2
-    assert isinstance(value, U256)
-    assert value == 9
-    assert value2 == U256(3)
-
-
-def test_u256_ipow_overflow() -> None:
-    value = U256(340282366920938463463374607431768211456)
-    with pytest.raises(OverflowError):
-        value **= 3
-
-
-def test_u256_ipow_negative() -> None:
-    value = U256(3)
-    with pytest.raises(OverflowError):
-        value **= -2
-
-
-def test_u256_ipow_modulo() -> None:
-    value = U256(4).__ipow__(2, 3)
-    assert isinstance(value, U256)
-    assert value == 1
-
-
-def test_u256_ipow_modulo_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(4).__ipow__(2, -3)
-
-
-def test_u256_ipow_modulo_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256(4).__ipow__(2, 2**256 + 1)
-
-
-def test_u256_wrapping_pow() -> None:
-    value = U256(3).wrapping_pow(2)
-    assert isinstance(value, U256)
-    assert value == 9
-
-
-def test_u256_wrapping_pow_overflow() -> None:
-    value = U256(340282366920938463463374607431768211455).wrapping_pow(3)
-    assert isinstance(value, U256)
-    assert value == 0x2FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-
-
-def test_u256_wrapping_pow_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(3).wrapping_pow(-2)
-
-
-def test_u256_wrapping_pow_modulo() -> None:
-    value = U256(4).wrapping_pow(2, 3)
-    assert isinstance(value, U256)
-    assert value == 1
-
-
-def test_u256_wrapping_pow_modulo_overflow() -> None:
-    with pytest.raises(OverflowError):
-        U256(4).wrapping_pow(2, 2**256 + 1)
-
-
-def test_u256_wrapping_pow_modulo_negative() -> None:
-    with pytest.raises(OverflowError):
-        U256(4).wrapping_pow(2, -3)
-
-
-def test_u256_to_be_bytes_zero() -> None:
-    encoded = U256(0).to_be_bytes()
-    assert encoded == bytes([])
-
-
-def test_u256_to_be_bytes_one() -> None:
-    encoded = U256(1).to_be_bytes()
-    assert encoded == bytes([1])
-
-
-def test_u256_to_be_bytes_is_big_endian() -> None:
-    encoded = U256(0xABCD).to_be_bytes()
-    assert encoded == bytes([0xAB, 0xCD])
-
-
-def test_u256_to_be_bytes32_zero() -> None:
-    encoded = U256(0).to_be_bytes32()
-    assert encoded == bytes([0] * 32)
-
-
-def test_u256_to_be_bytes32_one() -> None:
-    encoded = U256(1).to_be_bytes32()
-    assert encoded == bytes([0] * 31 + [1])
-
-
-def test_u256_to_be_bytes32_max_value() -> None:
-    encoded = U256(2**256 - 1).to_be_bytes32()
-    assert encoded == bytes(
-        [
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-        ]
-    )
-
-
-def test_u256_from_be_bytes_empty() -> None:
-    value = U256.from_be_bytes(b"")
-    assert value == 0
-
-
-def test_u256_from_be_bytes_one() -> None:
-    value = U256.from_be_bytes(bytes([1]))
-    assert value == 1
-
-
-def test_u256_from_be_bytes_is_big_endian() -> None:
-    value = U256.from_be_bytes(bytes([0xAB, 0xCD]))
-    assert value == 0xABCD
-
-
-def test_u256_from_be_bytes_too_large() -> None:
     with pytest.raises(ValueError):
-        U256.from_be_bytes(bytes([0xFF] * 33))
+        Class.from_be_bytes(bytes([0xFF] * byte_count))
 
 
-def test_u256_bitwise_and_successful() -> None:
-    assert U256(0) & U256(0) == 0
-    assert U256(2**256 - 1) & U256(2**256 - 1) == 2**256 - 1
-    assert U256(2**256 - 1) & U256(0) == U256(0)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_from_le_bytes_too_large(Class: Type[FixedUnsigned]) -> None:
+    bits = Class.MAX_VALUE._number.bit_length()
+    byte_count = (bits + 7) // 8
+    byte_count += 1
+
+    with pytest.raises(ValueError):
+        Class.from_le_bytes(bytes([0xFF] * byte_count))
 
 
-def test_u256_bitwise_and_fails() -> None:
-    with pytest.raises(OverflowError):
-        U256(0) & (2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1) & (2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1) & -10
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_invert(Class: Type[FixedUnsigned]) -> None:
+    assert ~Class(0) == Class.MAX_VALUE
+    assert ~Class(10) == Class.MAX_VALUE - Class(10)
+    assert ~Class.MAX_VALUE == 0
 
 
-def test_u256_bitwise_or_successful() -> None:
-    assert U256(0) | U256(0) == 0
-    assert U256(2**256 - 1) | U256(0) == 2**256 - 1
-    assert U256(2**256 - 1) | U256(2**256 - 1) == U256(2**256 - 1)
-    assert U256(2**256 - 1) | U256(17) == U256(2**256 - 1)
-    assert U256(17) | U256(18) == U256(19)
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_rshift(Class: Type[FixedUnsigned]) -> None:
+    bits = Class(Class.MAX_VALUE.bit_length())
+
+    assert Class.MAX_VALUE >> (bits - Class(1)) == Class(1)
+    assert Class.MAX_VALUE >> Class(bits) == Class(0)
+    assert Class.MAX_VALUE >> Class(bits + Class(1)) == Class(0)
+    assert Class(0) >> Class(20) == Class(0)
 
 
-def test_u256_bitwise_or_failed() -> None:
-    with pytest.raises(OverflowError):
-        U256(0) | (2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1) | (2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1) | -10
-
-
-def test_u256_bitwise_xor_successful() -> None:
-    assert U256(0) ^ U256(0) == 0
-    assert U256(2**256 - 1) ^ U256(0) == 2**256 - 1
-    assert U256(2**256 - 1) ^ U256(2**256 - 1) == U256(0)
-    assert U256(2**256 - 1) ^ U256(17) == U256(2**256 - 1) - U256(17)
-    assert U256(17) ^ U256(18) == U256(3)
-
-
-def test_u256_bitwise_xor_failed() -> None:
-    with pytest.raises(OverflowError):
-        U256(0) ^ (2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1) ^ (2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1) ^ -10
-
-
-def test_u256_bitwise_rxor_successful() -> None:
-    assert U256(0).__rxor__(U256(0)) == 0
-    assert U256(2**256 - 1).__rxor__(U256(0)) == 2**256 - 1
-    assert U256(2**256 - 1).__rxor__(U256(2**256 - 1)) == U256(0)
-    assert U256(2**256 - 1).__rxor__(U256(17)) == U256(2**256 - 1) - U256(
-        17
-    )
-    assert U256(17).__rxor__(U256(18)) == U256(3)
-
-
-def test_u256_bitwise_rxor_failed() -> None:
-    with pytest.raises(OverflowError):
-        U256(0).__rxor__(2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1).__rxor__(2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1).__rxor__(-10)
-
-
-def test_u256_bitwise_ixor_successful() -> None:
-    value = U256(1)
-    value2 = value
-    value ^= U256(1)
-    assert value == U256(0)
-    assert value2 == U256(1)
-
-    assert U256(0).__ixor__(U256(0)) == 0
-    assert U256(2**256 - 1).__ixor__(U256(0)) == 2**256 - 1
-    assert U256(2**256 - 1).__ixor__(U256(2**256 - 1)) == U256(0)
-    assert U256(2**256 - 1).__ixor__(U256(17)) == U256(2**256 - 1) - U256(
-        17
-    )
-    assert U256(17).__ixor__(U256(18)) == U256(3)
-
-
-def test_u256_bitwise_ixor_failed() -> None:
-    with pytest.raises(OverflowError):
-        U256(0).__ixor__(2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1).__ixor__(2**256)
-    with pytest.raises(OverflowError):
-        U256(2**256 - 1).__ixor__(-10)
-
-
-def test_u256_invert() -> None:
-    assert ~U256(0) == int(U256.MAX_VALUE)
-    assert ~U256(10) == int(U256.MAX_VALUE) - 10
-    assert ~U256(2**256 - 1) == 0
-
-
-def test_u256_rshift() -> None:
-    assert U256.MAX_VALUE >> 255 == 1
-    assert U256.MAX_VALUE >> 256 == 0
-    assert U256.MAX_VALUE >> 257 == 0
-    assert U256(0) >> 20 == 0
-
-
-def test_uint_to_le_bytes_zero() -> None:
-    encoded = Uint(0).to_le_bytes()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes_zero(Class: Type[Unsigned]) -> None:
+    encoded = Class(0).to_le_bytes()
     assert encoded == bytes([])
 
 
-def test_uint_to_le_bytes_one() -> None:
-    encoded = Uint(1).to_le_bytes()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes_one(Class: Type[Unsigned]) -> None:
+    encoded = Class(1).to_le_bytes()
     assert encoded == bytes([1])
 
 
-def test_uint_to_le_bytes_is_little_endian() -> None:
-    encoded = Uint(0xABCD).to_le_bytes()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes_is_little_endian(Class: Type[Unsigned]) -> None:
+    encoded = Class(0xABCD).to_le_bytes()
     assert encoded == bytes([0xCD, 0xAB])
 
 
-def test_uint_to_le_bytes64_zero() -> None:
-    actual = Uint(0).to_le_bytes64()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes64_zero(Class: Type[Unsigned]) -> None:
+    actual = Class(0).to_le_bytes64()
     expected = Bytes64([0] * 64)
     assert isinstance(actual, Bytes64)
     assert actual == expected
 
 
-def test_uint_to_le_bytes64_one() -> None:
-    actual = Uint(1).to_le_bytes64()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes64_one(Class: Type[Unsigned]) -> None:
+    actual = Class(1).to_le_bytes64()
     expected = Bytes64([1] + [0] * 63)
     assert isinstance(actual, Bytes64)
     assert actual == expected
 
 
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
 def test_uint_to_le_bytes64_max_value() -> None:
     actual = Uint(2**512 - 1).to_le_bytes64()
     expected = Bytes64([0xFF] * 64)
@@ -1420,410 +950,566 @@ def test_uint_to_le_bytes64_max_value() -> None:
     assert actual == expected
 
 
-def test_uint_to_le_bytes32_zero() -> None:
-    encoded = Uint(0).to_le_bytes32()
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_le_bytes64_too_big() -> None:
+    value = Uint(2**512)
+
+    with pytest.raises(OverflowError):
+        value.to_le_bytes64()
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes32_zero(Class: Type[Unsigned]) -> None:
+    encoded = Class(0).to_le_bytes32()
     assert encoded == bytes([0] * 32)
 
 
-def test_uint_to_le_bytes32_one() -> None:
-    encoded = Uint(1).to_le_bytes32()
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes32_one(Class: Type[Unsigned]) -> None:
+    encoded = Class(1).to_le_bytes32()
     assert encoded == bytes([1] + ([0] * 31))
 
 
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
 def test_uint_to_le_bytes32_max_value() -> None:
     encoded = Uint(2**256 - 1).to_le_bytes32()
-    assert encoded == bytes(
-        [
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-            0xFF,
-        ]
-    )
+    assert encoded == bytes([0xFF] * 32)
 
 
-def test_uint_neg() -> None:
-    result = -Uint(1)
-    assert not isinstance(result, Uint)
+@pytest.mark.unsigned
+@pytest.mark.fixed
+def test_u256_to_le_bytes32_max_value() -> None:
+    encoded = U256(2**256 - 1).to_le_bytes32()
+    assert encoded == bytes([0xFF] * 32)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_neg(Class: Type[Unsigned]) -> None:
+    result = -Class(1)
+    assert not isinstance(result, Unsigned)  # type: ignore[unreachable]
     assert result == -1
 
 
-def test_uint_pos() -> None:
-    assert Uint(1) == +Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_pos(Class: Type[Unsigned]) -> None:
+    assert Class(1) == +Class(1)
 
 
+@pytest.mark.unsigned
+@pytest.mark.fixed
 def test_uint_invert() -> None:
     with pytest.raises(NotImplementedError):
         ~Uint(1)
 
 
-def test_uint_int() -> None:
-    assert int(Uint(0xF000)) == 0xF000
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_int(Class: Type[Unsigned]) -> None:
+    assert int(Class(0xF000)) == Class(0xF000)
 
 
-def test_uint_floor_same() -> None:
-    a = Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_floor_same(Class: Type[Unsigned]) -> None:
+    a = Class(1)
     b = floor(a)
-    a += Uint(1)
-    assert a == Uint(2)
-    assert b == Uint(1)
+    a += Class(1)
+    assert a == Class(2)
+    assert b == Class(1)
 
 
-def test_uint_floor() -> None:
-    assert floor(Uint(1)) == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_floor(Class: Type[Unsigned]) -> None:
+    assert floor(Class(1)) == Class(1)
 
 
-def test_uint_ceil_same() -> None:
-    a = Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ceil_same(Class: Type[Unsigned]) -> None:
+    a = Class(1)
     b = ceil(a)
-    a += Uint(1)
-    assert a == Uint(2)
-    assert b == Uint(1)
+    a += Class(1)
+    assert a == Class(2)
+    assert b == Class(1)
 
 
-def test_uint_ceil() -> None:
-    assert ceil(Uint(1)) == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ceil(Class: Type[Unsigned]) -> None:
+    assert ceil(Class(1)) == Class(1)
 
 
-def test_uint_ne() -> None:
-    assert Uint(1) != Uint(2)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ne(Class: Type[Unsigned]) -> None:
+    assert Class(1) != Class(2)
 
 
-def test_uint_ne_not() -> None:
-    assert not (Uint(1) != Uint(1))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ne_not(Class: Type[Unsigned]) -> None:
+    assert not (Class(1) != Class(1))
 
 
-def test_uint_le() -> None:
-    assert Uint(1) <= Uint(1)
-    assert Uint(0) <= Uint(1)
-    assert not (Uint(2) <= Uint(1))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_le(Class: Type[Unsigned]) -> None:
+    assert Class(1) <= Class(1)
+    assert Class(0) <= Class(1)
+    assert not (Class(2) <= Class(1))
 
 
-def test_uint_le_different_types() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_le_different_types(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(1) <= 1  # type: ignore[operator] # noqa: B015
+        Class(1) <= 1  # type: ignore[operator] # noqa: B015
 
 
-def test_uint_ge() -> None:
-    assert Uint(1) >= Uint(1)
-    assert Uint(2) >= Uint(1)
-    assert not (Uint(1) >= Uint(2))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ge(Class: Type[Unsigned]) -> None:
+    assert Class(1) >= Class(1)
+    assert Class(2) >= Class(1)
+    assert not (Class(1) >= Class(2))
 
 
-def test_uint_ge_different_types() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_ge_different_types(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(1) >= 1  # type: ignore[operator] # noqa: B015
+        Class(1) >= 1  # type: ignore[operator] # noqa: B015
 
 
-def test_uint_lt() -> None:
-    assert not (Uint(1) < Uint(1))
-    assert Uint(0) < Uint(1)
-    assert not (Uint(2) < Uint(1))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_lt(Class: Type[Unsigned]) -> None:
+    assert not (Class(1) < Class(1))
+    assert Class(0) < Class(1)
+    assert not (Class(2) < Class(1))
 
 
-def test_uint_lt_different_types() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_lt_different_types(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(1) < 1  # type: ignore[operator] # noqa: B015
+        Class(1) < 1  # type: ignore[operator] # noqa: B015
     with pytest.raises(TypeError):
-        1 < Uint(1)  # type: ignore[operator] # noqa: B015
+        1 < Class(1)  # type: ignore[operator] # noqa: B015
 
 
-def test_uint_gt() -> None:
-    assert not (Uint(1) > Uint(1))
-    assert Uint(2) > Uint(1)
-    assert not (Uint(1) > Uint(2))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_gt(Class: Type[Unsigned]) -> None:
+    assert not (Class(1) > Class(1))
+    assert Class(2) > Class(1)
+    assert not (Class(1) > Class(2))
 
 
-def test_uint_gt_different_types() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_gt_different_types(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(1) > 1  # type: ignore[operator] # noqa: B015
+        Class(1) > 1  # type: ignore[operator] # noqa: B015
     with pytest.raises(TypeError):
-        1 > Uint(1)  # type: ignore[operator] # noqa: B015
+        1 > Class(1)  # type: ignore[operator] # noqa: B015
 
 
-def test_uint_lshift_int() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_lshift_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(3) << 4  # type: ignore[operator]
+        Class(3) << 4  # type: ignore[operator]
 
 
-def test_uint_lshift() -> None:
-    expected = Uint(3 << 4)
-    actual = Uint(3) << Uint(4)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_lshift(Class: Type[Unsigned]) -> None:
+    expected = Class(3 << 4)
+    actual = Class(3) << Class(4)
     assert expected == actual
 
 
-def test_uint_rlshift_int() -> None:
-    assert Uint(3).__rlshift__(4) is NotImplemented  # type: ignore[operator]
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rlshift_int(Class: Type[Unsigned]) -> None:
+    assert Class(3).__rlshift__(4) is NotImplemented  # type: ignore[operator]
 
 
-def test_uint_rlshift() -> None:
-    expected = Uint((3).__rlshift__(4))
-    actual = Uint(3).__rlshift__(Uint(4))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rlshift(Class: Type[Unsigned]) -> None:
+    expected = Class((3).__rlshift__(4))
+    actual = Class(3).__rlshift__(Class(4))
     assert expected == actual
 
 
-def test_uint_rshift() -> None:
-    expected = Uint(3 >> 4)
-    actual = Uint(3) >> Uint(4)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rshift(Class: Type[Unsigned]) -> None:
+    expected = Class(3 >> 4)
+    actual = Class(3) >> Class(4)
     assert expected == actual
 
 
-def test_uint_rshift_int() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rshift_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(3) >> 4  # type: ignore[operator]
+        Class(3) >> 4  # type: ignore[operator]
 
 
-def test_uint_rrshift() -> None:
-    expected = Uint((3).__rrshift__(4))
-    actual = Uint(3).__rrshift__(Uint(4))
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rrshift(Class: Type[Unsigned]) -> None:
+    expected = Class((3).__rrshift__(4))
+    actual = Class(3).__rrshift__(Class(4))
     assert expected == actual
 
 
-def test_uint_rrshift_int() -> None:
-    assert Uint(3).__rrshift__(4) is NotImplemented  # type: ignore[operator]
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_rrshift_int(Class: Type[Unsigned]) -> None:
+    assert Class(3).__rrshift__(4) is NotImplemented  # type: ignore[operator]
 
 
-def test_uint_abs() -> None:
-    assert abs(Uint(1)) == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_eq_str(Class: Type[Unsigned]) -> None:
+    assert Class(1).__eq__("hello") is NotImplemented
 
 
-def test_uint_abs_same() -> None:
-    a = Uint(1)
-    b = abs(a)
-    a += Uint(1)
-    assert a == Uint(2)
-    assert b == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_eq_float(Class: Type[Unsigned]) -> None:
+    assert Class(1) == 1.0
+    assert 1.0 == Class(1)
 
 
-def test_uint_trunc() -> None:
-    assert trunc(Uint(1)) == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_eq_int(Class: Type[Unsigned]) -> None:
+    assert Class(1) == 1
+    assert 1 == Class(1)
 
 
-def test_uint_trunc_same() -> None:
-    a = Uint(1)
-    b = trunc(a)
-    a += Uint(1)
-    assert a == Uint(2)
-    assert b == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_eq(Class: Type[Unsigned]) -> None:
+    assert Class(1) == Class(1)
 
 
-def test_uint_round() -> None:
-    assert round(Uint(1)) == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_eq_not_float(Class: Type[Unsigned]) -> None:
+    assert not (Class(1) == 1.1)
 
 
-def test_uint_round_same() -> None:
-    a = Uint(1)
-    b = round(a)
-    a += Uint(1)
-    assert a == Uint(2)
-    assert b == Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_eq_not(Class: Type[Unsigned]) -> None:
+    assert not (Class(1) == Class(2))
 
 
-def test_uint_truediv_int() -> None:
-    assert Uint(1).__truediv__(2) is NotImplemented  # type: ignore[operator]
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_hash(Class: Type[Unsigned]) -> None:
+    assert hash(Class(1)) == hash(Class(1))
+    assert hash(Class(1)) != hash(Class(2))
 
 
-def test_uint_rtruediv_int() -> None:
-    assert Uint(1).__rtruediv__(2) is NotImplemented  # type: ignore[operator]
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_rand(Class: Type[Unsigned]) -> None:
+    assert Class(0).__rand__(Class(0)) == Class(0)
+    assert Class(2**32 - 1).__rand__(Class(2**32 - 1)) == Class(2**32 - 1)
+    assert Class(2**32 - 1).__rand__(Class(0)) == Class(0)
 
 
-def test_uint_truediv() -> None:
-    expected = (1).__truediv__(2)
-    actual = Uint(1).__truediv__(Uint(2))
-    assert expected == actual
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_bitwise_rand(Class: Type[FixedUnsigned]) -> None:
+    assert Class.MAX_VALUE.__rand__(Class.MAX_VALUE) == Class(Class.MAX_VALUE)
+    assert Class.MAX_VALUE.__rand__(Class(0)) == Class(0)
 
 
-def test_uint_rtruediv() -> None:
-    expected = (1).__rtruediv__(2)
-    actual = Uint(1).__rtruediv__(Uint(2))
-    assert expected == actual
-
-
-def test_uint_eq_str() -> None:
-    assert Uint(1).__eq__("hello") is NotImplemented
-
-
-def test_uint_eq_float() -> None:
-    assert Uint(1) == 1.0
-    assert 1.0 == Uint(1)
-
-
-def test_uint_eq_int() -> None:
-    assert Uint(1) == 1
-    assert 1 == Uint(1)
-
-
-def test_uint_eq() -> None:
-    assert Uint(1) == Uint(1)
-
-
-def test_uint_eq_not_float() -> None:
-    assert not (Uint(1) == 1.1)
-
-
-def test_uint_eq_not() -> None:
-    assert not (Uint(1) == Uint(2))
-
-
-def test_uint_hash() -> None:
-    assert hash(Uint(1)) == hash(Uint(1))
-
-
-def test_uint_bitwise_rand_successful() -> None:
-    assert Uint(0).__rand__(Uint(0)) == Uint(0)
-    assert Uint(2**256 - 1).__rand__(Uint(2**256 - 1)) == Uint(
-        2**256 - 1
-    )
-    assert Uint(2**256 - 1).__rand__(Uint(0)) == Uint(0)
-
-
-def test_uint_bitwise_rand_fails() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_rand_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (2**256) & Uint(0)  # type: ignore[operator]
+        (2**256) & Class(0)  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_and(Class: Type[Unsigned]) -> None:
+    assert Class(0) & Class(0) == Class(0)
+    assert Class(2**32 - 1) & Class(2**32 - 1) == Class(2**32 - 1)
+    assert Class(2**32 - 1) & Class(0) == Class(0)
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_bitwise_and(Class: Type[FixedUnsigned]) -> None:
+    assert Class.MAX_VALUE & Class.MAX_VALUE == Class.MAX_VALUE
+    assert Class.MAX_VALUE.__rand__(Class(0)) == Class(0)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_and_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (2**256) & Uint(2**256 - 1)  # type: ignore[operator]
+        Class(0) & (2**256)  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_ror(Class: Type[Unsigned]) -> None:
+    assert Class(0).__ror__(Class(0)) == Class(0)
+    assert Class(2**32 - 1).__ror__(Class(0)) == Class(2**32 - 1)
+    assert Class(2**32 - 1).__ror__(Class(2**32 - 1)) == Class(2**32 - 1)
+    assert Class(2**32 - 1).__ror__(Class(17)) == Class(2**32 - 1)
+    assert Class(17).__ror__(Class(18)) == Class(19)
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_bitwise_ror(Class: Type[FixedUnsigned]) -> None:
+    assert Class.MAX_VALUE.__ror__(Class(0)) == Class.MAX_VALUE
+    assert Class.MAX_VALUE.__ror__(Class.MAX_VALUE) == Class.MAX_VALUE
+    assert Class.MAX_VALUE.__ror__(Class(17)) == Class.MAX_VALUE
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_ror_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        (-10) & Uint(2**256 - 1)  # type: ignore[operator]
+        (2**256) | Class(0)  # type: ignore[operator]
 
 
-def test_uint_bitwise_and_successful() -> None:
-    assert Uint(0) & Uint(0) == Uint(0)
-    assert Uint(2**256 - 1) & Uint(2**256 - 1) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1) & Uint(0) == Uint(0)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_or(Class: Type[Unsigned]) -> None:
+    assert Class(0) | Class(0) == Class(0)
+    assert Class(2**32 - 1) | Class(0) == Class(2**32 - 1)
+    assert Class(2**32 - 1) | Class(2**32 - 1) == Class(2**32 - 1)
+    assert Class(2**32 - 1) | Class(17) == Class(2**32 - 1)
+    assert Class(17) | Class(18) == Class(19)
 
 
-def test_uint_bitwise_and_fails() -> None:
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_bitwise_or(Class: Type[FixedUnsigned]) -> None:
+    assert Class.MAX_VALUE | Class(0) == Class.MAX_VALUE
+    assert Class.MAX_VALUE | Class.MAX_VALUE == Class.MAX_VALUE
+    assert Class.MAX_VALUE | Class(17) == Class.MAX_VALUE
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_or_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(0) & (2**256)  # type: ignore[operator]
+        Class(0) | (2**256)  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_xor(Class: Type[Unsigned]) -> None:
+    assert Class(0) ^ Class(0) == Class(0)
+    assert Class(2**32 - 1) ^ Class(0) == Class(2**32 - 1)
+    assert Class(2**32 - 1) ^ Class(2**32 - 1) == Class(0)
+    assert Class(2**32 - 1) ^ Class(17) == Class(2**32 - 1) - Class(17)
+    assert Class(17) ^ Class(18) == Class(3)
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_bitwise_xor(Class: Type[FixedUnsigned]) -> None:
+    assert Class.MAX_VALUE ^ Class(0) == Class.MAX_VALUE
+    assert Class.MAX_VALUE ^ Class.MAX_VALUE == Class(0)
+    assert Class.MAX_VALUE ^ Class(17) == Class.MAX_VALUE - Class(17)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_xor_int(Class: Type[Unsigned]) -> None:
     with pytest.raises(TypeError):
-        Uint(2**256 - 1) & (2**256)  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        Uint(2**256 - 1) & -10  # type: ignore[operator]
+        Class(0) ^ (2**256)  # type: ignore[operator]
 
 
-def test_uint_bitwise_ror_successful() -> None:
-    assert Uint(0).__ror__(Uint(0)) == Uint(0)
-    assert Uint(2**256 - 1).__ror__(Uint(0)) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1).__ror__(Uint(2**256 - 1)) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1).__ror__(Uint(17)) == Uint(2**256 - 1)
-    assert Uint(17).__ror__(Uint(18)) == Uint(19)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_rxor(Class: Type[Unsigned]) -> None:
+    assert Class(0).__rxor__(Class(0)) == Class(0)
+    assert Class(2**32 - 1).__rxor__(Class(0)) == Class(2**32 - 1)
+    assert Class(2**32 - 1).__rxor__(Class(2**32 - 1)) == Class(0)
+    assert Class(2**32 - 1).__rxor__(Class(17)) == Class(2**32 - 1) - Class(17)
+    assert Class(17).__rxor__(Class(18)) == Class(3)
 
 
-def test_uint_bitwise_ror_failed() -> None:
-    with pytest.raises(TypeError):
-        (2**256) | Uint(0)  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        (2**256) | Uint(2**256 - 1)  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        (-10) | Uint(2**256 - 1)  # type: ignore[operator]
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_bitwise_rxor(Class: Type[FixedUnsigned]) -> None:
+    assert Class.MAX_VALUE.__rxor__(Class(0)) == Class.MAX_VALUE
+    assert Class.MAX_VALUE.__rxor__(Class.MAX_VALUE) == Class(0)
+    assert Class.MAX_VALUE.__rxor__(Class(17)) == Class.MAX_VALUE - Class(17)
 
 
-def test_uint_bitwise_or_successful() -> None:
-    assert Uint(0) | Uint(0) == Uint(0)
-    assert Uint(2**256 - 1) | Uint(0) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1) | Uint(2**256 - 1) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1) | Uint(17) == Uint(2**256 - 1)
-    assert Uint(17) | Uint(18) == Uint(19)
-
-
-def test_uint_bitwise_or_failed() -> None:
-    with pytest.raises(TypeError):
-        Uint(0) | (2**256)  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        Uint(2**256 - 1) | (2**256)  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        Uint(2**256 - 1) | -10  # type: ignore[operator]
-
-
-def test_uint_bitwise_xor_successful() -> None:
-    assert Uint(0) ^ Uint(0) == Uint(0)
-    assert Uint(2**256 - 1) ^ Uint(0) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1) ^ Uint(2**256 - 1) == Uint(0)
-    assert Uint(2**256 - 1) ^ Uint(17) == Uint(2**256 - 1) - Uint(17)
-    assert Uint(17) ^ Uint(18) == Uint(3)
-
-
-def test_uint_bitwise_xor_failed() -> None:
-    with pytest.raises(TypeError):
-        Uint(0) ^ (2**256)  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        Uint(2**256 - 1) ^ (2**256)  # type: ignore[operator]
-    with pytest.raises(TypeError):
-        Uint(2**256 - 1) ^ -10  # type: ignore[operator]
-
-
-def test_uint_bitwise_rxor_successful() -> None:
-    assert Uint(0).__rxor__(Uint(0)) == Uint(0)
-    assert Uint(2**256 - 1).__rxor__(Uint(0)) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1).__rxor__(Uint(2**256 - 1)) == Uint(0)
-    assert Uint(2**256 - 1).__rxor__(Uint(17)) == Uint(2**256 - 1) - Uint(
-        17
-    )
-    assert Uint(17).__rxor__(Uint(18)) == Uint(3)
-
-
-def test_uint_bitwise_rxor_failed() -> None:
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_rxor_int(Class: Type[Unsigned]) -> None:
     assert Uint(0).__rxor__(2**256) is NotImplemented  # type: ignore[operator]
-    assert Uint(2**256 - 1).__rxor__(2**256) is NotImplemented  # type: ignore[operator]
-    assert Uint(2**256 - 1).__rxor__(-10) is NotImplemented  # type: ignore[operator]
 
 
-def test_uint_bitwise_ixor_successful() -> None:
-    value = Uint(1)
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_ixor(Class: Type[Unsigned]) -> None:
+    value = Class(1)
     value2 = value
-    value ^= Uint(1)
-    assert value == Uint(0)
-    assert value2 == Uint(1)
+    value ^= Class(1)
+    assert value == Class(0)
+    assert value2 == Class(1)
 
-    assert Uint(0).__ixor__(Uint(0)) == Uint(0)
-    assert Uint(2**256 - 1).__ixor__(Uint(0)) == Uint(2**256 - 1)
-    assert Uint(2**256 - 1).__ixor__(Uint(2**256 - 1)) == Uint(0)
-    assert Uint(2**256 - 1).__ixor__(Uint(17)) == Uint(2**256 - 1) - Uint(
-        17
-    )
-    assert Uint(17).__ixor__(Uint(18)) == Uint(3)
+    assert Class(0).__ixor__(Class(0)) == Class(0)
+    assert Class(2**32 - 1).__ixor__(Class(0)) == Class(2**32 - 1)
+    assert Class(2**32 - 1).__ixor__(Class(2**32 - 1)) == Class(0)
+    assert Class(2**32 - 1).__ixor__(Class(17)) == Class(2**32 - 1) - Class(17)
+    assert Class(17).__ixor__(Class(18)) == Class(3)
 
 
-def test_uint_bitwise_ixor_failed() -> None:
-    assert Uint(0).__ixor__(2**256) is NotImplemented  # type: ignore[arg-type]
-    assert Uint(2**256 - 1).__ixor__(2**256) is NotImplemented  # type: ignore[arg-type]
-    assert Uint(2**256 - 1).__ixor__(-10) is NotImplemented  # type: ignore[arg-type]
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_bitwise_ixor(Class: Type[FixedUnsigned]) -> None:
+    assert Class.MAX_VALUE.__ixor__(Class(0)) == Class.MAX_VALUE
+    assert Class.MAX_VALUE.__ixor__(Class.MAX_VALUE) == Class(0)
+    assert Class.MAX_VALUE.__ixor__(Class(17)) == Class.MAX_VALUE - Class(17)
 
 
-def test_uint_repr() -> None:
-    assert repr(Uint(1)) == "Uint(1)"
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bitwise_ixor_int(Class: Type[Unsigned]) -> None:
+    assert Class(0).__ixor__(2**256) is NotImplemented  # type: ignore[arg-type]
 
 
-def test_uint_str() -> None:
-    assert str(Uint(1)) == "1"
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_repr(Class: Type[Unsigned]) -> None:
+    assert repr(Class(1)) == f"{Class.__name__}(1)"
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_str(Class: Type[Unsigned]) -> None:
+    assert str(Class(1)) == "1"
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes4_zero(Class: Type[Unsigned]) -> None:
+    actual = Class(0).to_le_bytes4()
+    assert isinstance(actual, Bytes4)
+    assert actual == bytes([0] * 4)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes4(Class: Type[Unsigned]) -> None:
+    actual = Class(0x89ABCDEF).to_le_bytes4()
+    assert isinstance(actual, Bytes4)
+    assert actual == bytes([0xEF, 0xCD, 0xAB, 0x89])
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_le_bytes4_overflow() -> None:
+    value = Uint(0x0189ABCDEF)
+    with pytest.raises(OverflowError):
+        value.to_le_bytes4()
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes4_zero(Class: Type[Unsigned]) -> None:
+    actual = Class(0).to_be_bytes4()
+    assert isinstance(actual, Bytes4)
+    assert actual == bytes([0] * 4)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes4(Class: Type[Unsigned]) -> None:
+    actual = Class(0xEFCDAB89).to_be_bytes4()
+    assert isinstance(actual, Bytes4)
+    assert actual == bytes([0xEF, 0xCD, 0xAB, 0x89])
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_be_bytes4_overflow() -> None:
+    value = Uint(0x0189ABCDEF)
+    with pytest.raises(OverflowError):
+        value.to_be_bytes4()
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes8_zero(Class: Type[Unsigned]) -> None:
+    actual = Class(0).to_le_bytes8()
+    assert isinstance(actual, Bytes8)
+    assert actual == bytes([0] * 8)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_le_bytes8(Class: Type[Unsigned]) -> None:
+    actual = Class(0x0000000089ABCDEF).to_le_bytes8()
+    assert isinstance(actual, Bytes8)
+    assert actual == bytes([0xEF, 0xCD, 0xAB, 0x89, 0x00, 0x00, 0x00, 0x00])
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_le_bytes8() -> None:
+    actual = Uint(0x0123456789ABCDEF).to_le_bytes8()
+    assert isinstance(actual, Bytes8)
+    assert actual == bytes([0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01])
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_le_bytes8_overflow() -> None:
+    value = Uint(0x010123456789ABCDEF)
+    with pytest.raises(OverflowError):
+        value.to_le_bytes8()
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes8_zero(Class: Type[Unsigned]) -> None:
+    actual = Class(0).to_be_bytes8()
+    assert isinstance(actual, Bytes8)
+    assert actual == bytes([0] * 8)
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_be_bytes8(Class: Type[Unsigned]) -> None:
+    actual = Class(0x00000000EFCDAB89).to_be_bytes8()
+    assert isinstance(actual, Bytes8)
+    assert actual == bytes([0x00, 0x00, 0x00, 0x00, 0xEF, 0xCD, 0xAB, 0x89])
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_be_bytes8() -> None:
+    actual = Uint(0xEFCDAB8967452301).to_be_bytes8()
+    assert isinstance(actual, Bytes8)
+    assert actual == bytes([0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01])
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_be_bytes8_overflow() -> None:
+    value = Uint(0x010123456789ABCDEF)
+    with pytest.raises(OverflowError):
+        value.to_be_bytes8()
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_to_signed(Class: Type[FixedUnsigned]) -> None:
+    value = Class(1234567890).to_signed()
+    assert isinstance(value, int)
+    assert value == 1234567890
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_to_signed_max_value(Class: Type[FixedUnsigned]) -> None:
+    value = Class.MAX_VALUE.to_signed()
+    assert isinstance(value, int)
+    assert value == -1
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_from_signed_to_signed(Class: Type[FixedUnsigned]) -> None:
+    unsigned = Class.from_signed(-123456)
+    assert isinstance(unsigned, Class)
+
+    signed = unsigned.to_signed()
+    assert isinstance(signed, int)
+    assert signed == -123456
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_from_signed(Class: Type[FixedUnsigned]) -> None:
+    unsigned = Class.from_signed(1)
+    assert isinstance(unsigned, Class)
+    assert unsigned == Class(1)
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_from_signed_negative(Class: Type[FixedUnsigned]) -> None:
+    unsigned = Class.from_signed(-1)
+    assert isinstance(unsigned, Class)
+    assert unsigned == Class.MAX_VALUE
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_from_signed_overflow(Class: Type[FixedUnsigned]) -> None:
+    too_positive = int(Class.MAX_VALUE) // 2
+    with pytest.raises(OverflowError):
+        Class.from_signed(too_positive)
+
+    too_negative = (-Class.MAX_VALUE // 2) - 1
+    with pytest.raises(OverflowError):
+        Class.from_signed(too_negative)
+
+
+def test_unsigned_in_range() -> None:
+    number = Uint(0)
+    with pytest.raises(NotImplementedError):
+        Unsigned._in_range(number, 0)
 
 
 def test_ulen() -> None:

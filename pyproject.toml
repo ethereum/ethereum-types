@@ -9,3 +9,10 @@ line_length = 79
 
 [tool.black]
 line-length = 79
+
+[tool.pytest.ini_options]
+markers = [
+    "fixed: exactly-sized integers like U256, U64, etc.",
+    "arbitrary: arbitrarily large numbers like Uint",
+    "unsigned: numbers greater than or equal to zero",
+]
