@@ -16,3 +16,8 @@ markers = [
     "arbitrary: arbitrarily large numbers like Uint",
     "unsigned: numbers greater than or equal to zero",
 ]
+
+[tool.docc.plugins."docc.python.discover"]
+paths = [
+    "src",
+]
