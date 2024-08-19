@@ -1497,7 +1497,7 @@ def test_fixed_from_signed_negative(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", FIXED)
 def test_fixed_from_signed_overflow(Class: Type[FixedUnsigned]) -> None:
-    too_positive = int(Class.MAX_VALUE) // 2
+    too_positive = int(Class.MAX_VALUE) // 2 + 1
     with pytest.raises(OverflowError):
         Class.from_signed(too_positive)
 

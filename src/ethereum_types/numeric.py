@@ -582,7 +582,7 @@ class FixedUnsigned(Unsigned):
         Creates an unsigned integer representing `value` using two's
         complement.
         """
-        if value >= (cls.MAX_VALUE._number // 2):
+        if value >= (cls.MAX_VALUE._number // 2 + 1):
             raise OverflowError
 
         if value >= 0:
