@@ -19,8 +19,6 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: dtolnay/rust-toolchain@1.69
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
