@@ -3,7 +3,7 @@ from typing import Type, TypeAlias, Union
 
 import pytest
 
-from ethereum_types.bytes import Bytes4, Bytes8, Bytes64
+from ethereum_types.bytes import Bytes1, Bytes4, Bytes8, Bytes64
 from ethereum_types.numeric import (
     U32,
     U64,
@@ -14,7 +14,7 @@ from ethereum_types.numeric import (
     ulen,
 )
 
-FIXED_TYPES = (U256, U64, U32)
+FIXED_TYPES = (U256, U64, U32)  # Just assume U8 works...
 
 UNSIGNED_MARKS = (pytest.mark.unsigned,)
 FIXED_MARKS = (pytest.mark.fixed,) + UNSIGNED_MARKS
@@ -592,6 +592,36 @@ def test_to_bytes_zero(Class: Type[Unsigned]) -> None:
 def test_to_bytes(Class: Type[Unsigned]) -> None:
     encoded = Class(1).to_bytes(length=Uint(5))
     assert encoded == bytes([0, 0, 0, 0, 1])
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_bytes1_zero(Class: Type[Unsigned]) -> None:
+    encoded = Class(0).to_bytes1()
+    assert encoded == bytes([0])
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_to_bytes1_one(Class: Type[Unsigned]) -> None:
+    encoded = Class(1).to_bytes1()
+    assert encoded == bytes([1])
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_bytes1_max_value() -> None:
+    actual = Uint(2**8 - 1).to_bytes1()
+    expected = Bytes1([0xFF])
+    assert isinstance(actual, Bytes1)
+    assert actual == expected
+
+
+@pytest.mark.unsigned
+@pytest.mark.arbitrary
+def test_uint_to_bytes1_too_big() -> None:
+    value = Uint(2**8)
+
+    with pytest.raises(OverflowError):
+        value.to_bytes1()
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
