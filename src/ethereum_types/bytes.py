@@ -43,6 +43,17 @@ class Bytes0(FixedBytes):
     """
 
 
+class Bytes1(FixedBytes):
+    """
+    Byte array of exactly one elements.
+    """
+
+    LENGTH = 1
+    """
+    Number of bytes in each instance of this class.
+    """
+
+
 class Bytes4(FixedBytes):
     """
     Byte array of exactly four elements.

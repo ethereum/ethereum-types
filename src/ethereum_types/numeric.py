@@ -18,7 +18,7 @@ from typing import (
 
 from typing_extensions import Self, override
 
-from .bytes import Bytes, Bytes4, Bytes8, Bytes32, Bytes64
+from .bytes import Bytes, Bytes1, Bytes4, Bytes8, Bytes32, Bytes64
 
 
 class Unsigned(Integral):
@@ -425,6 +425,13 @@ class Unsigned(Integral):
         """
         return Bytes32(self._number.to_bytes(32, "big"))
 
+    def to_bytes1(self) -> Bytes1:
+        """
+        Converts this unsigned integer into a byte sequence with exactly 1
+        bytes.
+        """
+        return Bytes1(self._number.to_bytes(1, "little"))
+
     def to_le_bytes4(self) -> "Bytes4":
         """
         Converts this unsigned integer into its little endian representation,
@@ -693,6 +700,21 @@ class U256(FixedUnsigned):
 
 
 U256.MAX_VALUE = _max_value(U256, 256)
+
+
+class U8(FixedUnsigned):
+    """
+    Unsigned positive integer, which can represent `0` to `2 ** 8 - 1`,
+    inclusive.
+    """
+
+    MAX_VALUE: ClassVar["U8"]
+    """
+    Largest value that can be represented by this integer type.
+    """
+
+
+U8.MAX_VALUE = _max_value(U8, 8)
 
 
 class U32(FixedUnsigned):
