@@ -3,6 +3,7 @@ Dataclass extension that supports immutability.
 """
 
 from dataclasses import is_dataclass, replace
+from functools import wraps
 from typing import (
     Any,
     Callable,
@@ -48,6 +49,7 @@ _P = ParamSpec("_P")
 def _make_init_function(
     f: Callable[Concatenate[_S, _P], None]
 ) -> Callable[Concatenate[_S, _P], None]:
+    @wraps(f)
     def init_function(self: _S, *args: _P.args, **kwargs: _P.kwargs) -> None:
         will_be_frozen = kwargs.pop("_frozen", True)
         assert isinstance(will_be_frozen, bool)
