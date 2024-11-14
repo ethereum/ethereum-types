@@ -1,4 +1,6 @@
+import inspect
 from dataclasses import dataclass
+from types import MappingProxyType
 
 import pytest
 
@@ -10,6 +12,22 @@ from ethereum_types.frozen import modify, slotted_freezable
 class Mock:
     a: int
     b: str
+
+
+def test_slotted_freezable_init_signature() -> None:
+    assert inspect.signature(Mock.__init__).parameters == MappingProxyType(
+        {
+            "self": inspect.Parameter(
+                "self", inspect.Parameter.POSITIONAL_OR_KEYWORD
+            ),
+            "a": inspect.Parameter(
+                "a", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=int
+            ),
+            "b": inspect.Parameter(
+                "b", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=str
+            ),
+        }
+    )
 
 
 def test_slotted_freezable_init() -> None:
