@@ -4,6 +4,7 @@ Numeric types (mostly integers.)
 
 from abc import abstractmethod
 from numbers import Integral
+from types import NotImplementedType
 from typing import (
     ClassVar,
     Final,
@@ -14,11 +15,14 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
+    Union,
 )
 
-from typing_extensions import Self, override
+from typing_extensions import Self, TypeAlias, override
 
 from .bytes import Bytes, Bytes1, Bytes4, Bytes8, Bytes32, Bytes64
+
+_BytesLike: TypeAlias = Union[bytes, bytearray, memoryview]
 
 
 class Unsigned(Integral):
@@ -178,10 +182,13 @@ class Unsigned(Integral):
         )
 
     @override
-    def __rdivmod__(self, left: Self) -> Tuple[Self, Self]:
+    def __rdivmod__(
+        self, left: Self
+    ) -> Union[Tuple[Self, Self], NotImplementedType]:
         Class = type(self)
         if not isinstance(left, Class):
-            return NotImplemented
+            # No idea why mypy is assuming this is an Any...
+            return NotImplemented  # type: ignore[no-any-return]
 
         result = self._number.__rdivmod__(left._number)
         return (
@@ -400,7 +407,8 @@ class Unsigned(Integral):
         return Class(self._number.__rlshift__(left._number))
 
     @override
-    def __hash__(self) -> int:
+    # Well, mypy is straight up incorrect on this.
+    def __hash__(self) -> int:  # type: ignore[override]
         return hash((type(self), self._number))
 
     @override
@@ -519,7 +527,7 @@ class Uint(Unsigned):
     """
 
     @classmethod
-    def from_be_bytes(cls: Type[Self], buffer: Bytes) -> Self:
+    def from_be_bytes(cls: Type[Self], buffer: _BytesLike) -> Self:
         """
         Converts a sequence of bytes into an arbitrarily sized unsigned integer
         from its big endian representation.
@@ -527,7 +535,7 @@ class Uint(Unsigned):
         return cls(int.from_bytes(buffer, "big"))
 
     @classmethod
-    def from_le_bytes(cls: Type[Self], buffer: Bytes) -> Self:
+    def from_le_bytes(cls: Type[Self], buffer: _BytesLike) -> Self:
         """
         Converts a sequence of bytes into an arbitrarily sized unsigned integer
         from its little endian representation.
@@ -558,7 +566,7 @@ class FixedUnsigned(Unsigned):
     """
 
     @classmethod
-    def from_be_bytes(cls: Type[Self], buffer: "Bytes") -> Self:
+    def from_be_bytes(cls: Type[Self], buffer: _BytesLike) -> Self:
         """
         Converts a sequence of bytes into a fixed sized unsigned integer
         from its big endian representation.
@@ -571,7 +579,7 @@ class FixedUnsigned(Unsigned):
         return cls(int.from_bytes(buffer, "big"))
 
     @classmethod
-    def from_le_bytes(cls: Type[Self], buffer: "Bytes") -> Self:
+    def from_le_bytes(cls: Type[Self], buffer: _BytesLike) -> Self:
         """
         Converts a sequence of bytes into a fixed sized unsigned integer
         from its little endian representation.
