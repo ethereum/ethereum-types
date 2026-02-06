@@ -1,6 +1,7 @@
 import pytest
 
 from ethereum_types.bytes import FixedBytes
+from ethereum_types.numeric import Uint
 
 
 def test_fixed_bytes_init_too_short() -> None:
@@ -49,3 +50,36 @@ def test_fixed_bytes_concat() -> None:
     assert tb == b"\x00\x00\x00\x00\x0011111"
     assert isinstance(tb, bytes)
     assert not isinstance(tb, TestBytes)
+
+
+def test_fixed_bytes_zero_bytes_all_zero() -> None:
+    class TestBytes(FixedBytes):
+        LENGTH = 5
+
+    tb0 = TestBytes(b"\0" * 5)
+    actual = tb0.zero_bytes()
+
+    assert isinstance(actual, Uint)
+    assert Uint(5) == actual
+
+
+def test_fixed_bytes_zero_bytes_all_nonzero() -> None:
+    class TestBytes(FixedBytes):
+        LENGTH = 5
+
+    tb0 = TestBytes(b"\1" * 5)
+    actual = tb0.zero_bytes()
+
+    assert isinstance(actual, Uint)
+    assert Uint(0) == actual
+
+
+def test_fixed_bytes_zero_bytes_mixed() -> None:
+    class TestBytes(FixedBytes):
+        LENGTH = 5
+
+    tb0 = TestBytes(b"\xff\x00\xff\x00\xff")
+    actual = tb0.zero_bytes()
+
+    assert isinstance(actual, Uint)
+    assert Uint(2) == actual

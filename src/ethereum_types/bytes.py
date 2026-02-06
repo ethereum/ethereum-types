@@ -2,7 +2,10 @@
 Sequences of 256-bit values.
 """
 
-from typing import Any, ClassVar, Type, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Type, TypeVar
+
+if TYPE_CHECKING:
+    from .numeric import Uint
 
 B = TypeVar("B", bound="FixedBytes")
 
@@ -30,6 +33,14 @@ class FixedBytes(bytes):
                 f"expected {cls.LENGTH} bytes but got {len(result)}"
             )
         return result
+
+    def zero_bytes(self) -> "Uint":
+        """
+        Count and return the number of zero bytes in the byte array.
+        """
+        from .numeric import Uint
+
+        return Uint(self.count(b"\0"))
 
 
 class Bytes0(FixedBytes):
