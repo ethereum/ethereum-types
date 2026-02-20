@@ -725,6 +725,21 @@ class U8(FixedUnsigned):
 U8.MAX_VALUE = _max_value(U8, 8)
 
 
+class U16(FixedUnsigned):
+    """
+    Unsigned positive integer, which can represent `0` to `2 ** 16 - 1`,
+    inclusive.
+    """
+
+    MAX_VALUE: ClassVar["U16"]
+    """
+    Largest value that can be represented by this integer type.
+    """
+
+
+U16.MAX_VALUE = _max_value(U16, 16)
+
+
 class U32(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 32 - 1`,
