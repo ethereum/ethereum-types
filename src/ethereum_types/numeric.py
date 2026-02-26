@@ -49,13 +49,13 @@ class Unsigned(int):
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__add__(self, right))
+        return int.__new__(Class, int.__add__(self, right))
 
     def __iadd__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__add__(self, right))
+        return int.__new__(Class, int.__add__(self, right))
 
     def __sub__(self, right: Self) -> Self:
         Class = type(self)
@@ -64,7 +64,7 @@ class Unsigned(int):
         result = int.__sub__(self, right)
         if result < 0:
             raise OverflowError()
-        return Class(result)
+        return int.__new__(Class, result)
 
     def __rsub__(self, left: Self) -> Self:
         Class = type(self)
@@ -73,7 +73,7 @@ class Unsigned(int):
         result = int.__sub__(left, self)
         if result < 0:
             raise OverflowError()
-        return Class(result)
+        return int.__new__(Class, result)
 
     def __isub__(self, right: Self) -> Self:
         Class = type(self)
@@ -82,13 +82,13 @@ class Unsigned(int):
         result = int.__sub__(self, right)
         if result < 0:
             raise OverflowError()
-        return Class(result)
+        return int.__new__(Class, result)
 
     def __mul__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__mul__(self, right))
+        return int.__new__(Class, int.__mul__(self, right))
 
     def __rmul__(self, left: Self) -> Self:
         return self.__mul__(left)
@@ -97,69 +97,73 @@ class Unsigned(int):
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__mul__(self, right))
+        return int.__new__(Class, int.__mul__(self, right))
 
     def __truediv__(self, other: Self) -> float:
-        Class = type(self)
-        if not isinstance(other, Class):
+        if not isinstance(other, type(self)):
             return NotImplemented
         return int.__truediv__(self, other)
 
     def __rtruediv__(self, other: Self) -> float:
-        Class = type(self)
-        if not isinstance(other, Class):
+        if not isinstance(other, type(self)):
             return NotImplemented
-        return int.__rtruediv__(self, other)
+        return int.__truediv__(other, self)
 
     def __floordiv__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__floordiv__(self, right))
+        return int.__new__(Class, int.__floordiv__(self, right))
 
     def __rfloordiv__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-        return Class(int.__rfloordiv__(self, left))
+        return int.__new__(Class, int.__floordiv__(left, self))
 
     def __ifloordiv__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__floordiv__(self, right))
+        return int.__new__(Class, int.__floordiv__(self, right))
 
     def __mod__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__mod__(self, right))
+        return int.__new__(Class, int.__mod__(self, right))
 
     def __rmod__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-        return Class(int.__rmod__(self, left))
+        return int.__new__(Class, int.__mod__(left, self))
 
     def __imod__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__mod__(self, right))
+        return int.__new__(Class, int.__mod__(self, right))
 
     def __divmod__(self, right: Self) -> Tuple[Self, Self]:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
         result = int.__divmod__(self, right)
-        return (Class(result[0]), Class(result[1]))
+        return (
+            int.__new__(Class, result[0]),
+            int.__new__(Class, result[1]),
+        )
 
     def __rdivmod__(self, left: Self) -> Tuple[Self, Self]:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-        result = int.__rdivmod__(self, left)
-        return (Class(result[0]), Class(result[1]))
+        result = int.__divmod__(left, self)
+        return (
+            int.__new__(Class, result[0]),
+            int.__new__(Class, result[1]),
+        )
 
     def __pow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
@@ -167,10 +171,10 @@ class Unsigned(int):
         if modulo is not None:
             if not isinstance(modulo, Class):
                 return NotImplemented
-            modulo_int = int(modulo)
+            modulo_int = modulo
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__pow__(self, int(right), modulo_int))
+        return int.__new__(Class, int.__pow__(self, right, modulo_int))
 
     def __rpow__(self, left: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
@@ -178,10 +182,10 @@ class Unsigned(int):
         if modulo is not None:
             if not isinstance(modulo, Class):
                 raise TypeError()
-            modulo_int = int(modulo)
+            modulo_int = modulo
         if not isinstance(left, Class):
             return NotImplemented
-        return Class(int.__rpow__(self, int(left), modulo_int))
+        return int.__new__(Class, int.__pow__(left, self, modulo_int))
 
     def __ipow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
@@ -189,10 +193,10 @@ class Unsigned(int):
         if modulo is not None:
             if not isinstance(modulo, Class):
                 raise TypeError()
-            modulo_int = int(modulo)
+            modulo_int = modulo
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__pow__(self, int(right), modulo_int))
+        return int.__new__(Class, int.__pow__(self, right, modulo_int))
 
     def __xor__(self, right: Self) -> Self:
         Class = type(self)
@@ -204,7 +208,7 @@ class Unsigned(int):
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-        return int.__new__(Class, int.__rxor__(self, left))
+        return int.__new__(Class, int.__xor__(left, self))
 
     def __ixor__(self, right: Self) -> Self:
         Class = type(self)
@@ -222,7 +226,7 @@ class Unsigned(int):
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
-        return int.__new__(Class, int.__rand__(self, other))
+        return int.__new__(Class, int.__and__(other, self))
 
     def __or__(self, other: Self) -> Self:
         Class = type(self)
@@ -234,7 +238,7 @@ class Unsigned(int):
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
-        return int.__new__(Class, int.__ror__(self, other))
+        return int.__new__(Class, int.__or__(other, self))
 
     def __neg__(self) -> int:
         return int.__neg__(self)
@@ -252,12 +256,6 @@ class Unsigned(int):
     def __ceil__(self) -> Self:
         return self
 
-    def __int__(self) -> int:
-        return int.__int__(self)
-
-    def __index__(self) -> int:
-        return int.__index__(self)
-
     def __eq__(self, other: object) -> bool:
         # Unlike the other comparison dunder methods, `__eq__` is expected to
         # work with any object, so mypy doesn't detect comparisons between
@@ -274,26 +272,22 @@ class Unsigned(int):
         return NotImplemented
 
     def __le__(self, other: Self) -> bool:
-        Class = type(self)
-        if not isinstance(other, Class):
+        if not isinstance(other, type(self)):
             return NotImplemented
         return int.__le__(self, other)
 
     def __ge__(self, other: Self) -> bool:
-        Class = type(self)
-        if not isinstance(other, Class):
+        if not isinstance(other, type(self)):
             return NotImplemented
         return int.__ge__(self, other)
 
     def __lt__(self, other: Self) -> bool:
-        Class = type(self)
-        if not isinstance(other, Class):
+        if not isinstance(other, type(self)):
             return NotImplemented
         return int.__lt__(self, other)
 
     def __gt__(self, other: Self) -> bool:
-        Class = type(self)
-        if not isinstance(other, Class):
+        if not isinstance(other, type(self)):
             return NotImplemented
         return int.__gt__(self, other)
 
@@ -313,25 +307,25 @@ class Unsigned(int):
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-        return int.__new__(Class, int.__rrshift__(self, left))
+        return int.__new__(Class, int.__rshift__(left, self))
 
     def __lshift__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(int.__lshift__(self, right))
+        return int.__new__(Class, int.__lshift__(self, right))
 
     def __rlshift__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-        return Class(int.__rlshift__(self, left))
+        return int.__new__(Class, int.__lshift__(left, self))
 
     def __hash__(self) -> int:
         return hash((type(self), int.__int__(self)))
 
     def __repr__(self) -> str:
-        return "{}({})".format(type(self).__name__, int.__int__(self))
+        return "{}({})".format(type(self).__name__, int.__repr__(self))
 
     def __str__(self) -> str:
         return int.__repr__(self)
@@ -396,7 +390,7 @@ class Unsigned(int):
         if length is None:
             length_int = 1
         else:
-            length_int = int.__int__(length)
+            length_int = length
         return int.to_bytes(self, length=length_int, byteorder=byteorder)
 
     def to_be_bytes(self) -> "Bytes":
@@ -435,7 +429,7 @@ class Unsigned(int):
         """
         Minimum number of bits required to represent this number in binary.
         """
-        return Uint(int.bit_length(self))
+        return int.__new__(Uint, int.bit_length(self))
 
 
 class Uint(Unsigned):
@@ -483,8 +477,8 @@ class FixedUnsigned(Unsigned):
 
     _MAX_INT: ClassVar[int]
     """
-    TODO: note we could have just used int(MAX_VALUE) but I imagine performance wise
-    TODO: this would be bad. Haven't benchmarked though.
+    TODO: note we could have just used int(MAX_VALUE) but I imagine
+    TODO: performance wise this would be bad. Haven't benchmarked though.
     Plain Python int mask `(2**bits) - 1`. Set by `_max_value()` at class
     creation time.
     """
@@ -530,6 +524,102 @@ class FixedUnsigned(Unsigned):
     def _in_range(self, value: int) -> bool:
         return 0 <= value <= type(self)._MAX_INT
 
+    def __add__(self, right: Self) -> Self:
+        Class = type(self)
+        if not isinstance(right, Class):
+            return NotImplemented
+        result = int.__add__(self, right)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __iadd__(self, right: Self) -> Self:
+        Class = type(self)
+        if not isinstance(right, Class):
+            return NotImplemented
+        result = int.__add__(self, right)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __mul__(self, right: Self) -> Self:
+        Class = type(self)
+        if not isinstance(right, Class):
+            return NotImplemented
+        result = int.__mul__(self, right)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __imul__(self, right: Self) -> Self:
+        Class = type(self)
+        if not isinstance(right, Class):
+            return NotImplemented
+        result = int.__mul__(self, right)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __pow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
+        Class = type(self)
+        modulo_int = None
+        if modulo is not None:
+            if not isinstance(modulo, Class):
+                return NotImplemented
+            modulo_int = modulo
+        if not isinstance(right, Class):
+            return NotImplemented
+        result = int.__pow__(self, right, modulo_int)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __rpow__(self, left: Self, modulo: Optional[Self] = None) -> Self:
+        Class = type(self)
+        modulo_int = None
+        if modulo is not None:
+            if not isinstance(modulo, Class):
+                raise TypeError()
+            modulo_int = modulo
+        if not isinstance(left, Class):
+            return NotImplemented
+        result = int.__pow__(left, self, modulo_int)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __ipow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
+        Class = type(self)
+        modulo_int = None
+        if modulo is not None:
+            if not isinstance(modulo, Class):
+                raise TypeError()
+            modulo_int = modulo
+        if not isinstance(right, Class):
+            return NotImplemented
+        result = int.__pow__(self, right, modulo_int)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __lshift__(self, right: Self) -> Self:
+        Class = type(self)
+        if not isinstance(right, Class):
+            return NotImplemented
+        result = int.__lshift__(self, right)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
+    def __rlshift__(self, left: Self) -> Self:
+        Class = type(self)
+        if not isinstance(left, Class):
+            return NotImplemented
+        result = int.__lshift__(left, self)
+        if result > Class._MAX_INT:
+            raise OverflowError()
+        return int.__new__(Class, result)
+
     def wrapping_add(self, right: Self) -> Self:
         """
         Return a new instance containing `self + right (mod N)`.
@@ -537,7 +627,7 @@ class FixedUnsigned(Unsigned):
         Class = type(self)
         if not isinstance(right, Class):
             raise TypeError()
-        return int.__new__(Class, (int.__add__(self, right)) & self._MAX_INT)
+        return int.__new__(Class, int.__add__(self, right) & self._MAX_INT)
 
     def wrapping_sub(self, right: Self) -> Self:
         """
@@ -546,7 +636,7 @@ class FixedUnsigned(Unsigned):
         Class = type(self)
         if not isinstance(right, Class):
             raise TypeError()
-        return int.__new__(Class, (int.__sub__(self, right)) & self._MAX_INT)
+        return int.__new__(Class, int.__sub__(self, right) & self._MAX_INT)
 
     def wrapping_mul(self, right: Self) -> Self:
         """
@@ -557,7 +647,7 @@ class FixedUnsigned(Unsigned):
             raise TypeError
 
         # This is a fast way of ensuring that the result is < (2 ** 256)
-        return int.__new__(Class, (int.__mul__(self, right)) & self._MAX_INT)
+        return int.__new__(Class, int.__mul__(self, right) & self._MAX_INT)
 
     def wrapping_pow(self, right: Self, modulo: Optional[Self] = None) -> Self:
         """
@@ -570,12 +660,12 @@ class FixedUnsigned(Unsigned):
         if modulo is not None:
             if not isinstance(modulo, Class):
                 raise TypeError()
-            modulo_int = int.__int__(modulo)
+            modulo_int = modulo
         if not isinstance(right, Class):
             raise TypeError()
         return int.__new__(
             Class,
-            int.__pow__(self, int.__int__(right), modulo_int) & self._MAX_INT,
+            int.__pow__(self, right, modulo_int) & self._MAX_INT,
         )
 
     def __invert__(self: Self) -> Self:
@@ -588,13 +678,14 @@ class FixedUnsigned(Unsigned):
         """
         Decodes a signed integer from its two's complement representation.
         """
+        n = int.__int__(self)
         bits = self._MAX_INT.bit_length()
         bits = 8 * ((bits + 7) // 8)
-        if int.bit_length(self) < bits:
+        if n.bit_length() < bits:
             # This means that the sign bit is 0
-            return int.__int__(self)
+            return n
         # -1 * (2's complement of value)
-        return int.__int__(self) - (self._MAX_INT + 1)
+        return n - (self._MAX_INT + 1)
 
 
 _V = TypeVar("_V", bound=FixedUnsigned)

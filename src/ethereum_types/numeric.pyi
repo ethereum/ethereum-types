@@ -6,11 +6,25 @@ treats `Uint` as incompatible with `int`, preventing LSP violations at
 type-check time. At runtime the implementation subclasses `int` for speed.
 """
 
-from typing import ClassVar, Literal, Optional, Sized, SupportsInt, Tuple, Type, Union
+from typing import (
+    ClassVar,
+    Literal,
+    Optional,
+    Sized,
+    SupportsInt,
+    Tuple,
+    Type,
+    Union,
+)
 
 from typing_extensions import Self, override
 
-from .bytes import Bytes, Bytes1, Bytes4, Bytes8, Bytes32, Bytes64
+from .bytes import Bytes as Bytes
+from .bytes import Bytes1 as Bytes1
+from .bytes import Bytes4 as Bytes4
+from .bytes import Bytes8 as Bytes8
+from .bytes import Bytes32 as Bytes32
+from .bytes import Bytes64 as Bytes64
 
 _BytesLike = Union[bytes, bytearray, memoryview]
 
