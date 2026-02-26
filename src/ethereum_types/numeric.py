@@ -2,12 +2,8 @@
 Numeric types (mostly integers.)
 """
 
-from abc import abstractmethod
-from numbers import Integral
-from types import NotImplementedType
 from typing import (
     ClassVar,
-    Final,
     Literal,
     Optional,
     Sized,
@@ -18,90 +14,82 @@ from typing import (
     Union,
 )
 
-from typing_extensions import Self, TypeAlias, override
+from typing_extensions import Self
 
 from .bytes import Bytes, Bytes1, Bytes4, Bytes8, Bytes32, Bytes64
 
-_BytesLike: TypeAlias = Union[bytes, bytearray, memoryview]
+_BytesLike = Union[bytes, bytearray, memoryview]
 
 
-class Unsigned(Integral):
+class Unsigned(int):
     """
     Base of integer types.
     """
 
-    __slots__ = ("_number",)
-    _number: Final[int]
+    __slots__ = ()
 
-    def __init__(self, value: SupportsInt) -> None:
+    def __new__(cls, value: SupportsInt) -> Self:
+        """Create a new unsigned integer in range."""
         int_value = int(value)
-        if not self._in_range(int_value):
+        instance = int.__new__(cls, int_value)
+        if not instance._in_range(int_value):
             raise OverflowError()
-        self._number = int_value
+        return instance
 
-    @abstractmethod
     def _in_range(self, value: int) -> bool:
         raise NotImplementedError
 
-    @override
     def __abs__(self) -> Self:
-        return type(self)(self)
+        return self
 
-    @override
     def __radd__(self, left: Self) -> Self:
         return self.__add__(left)
 
-    @override
     def __add__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(self._number + right._number)
+        return Class(int.__add__(self, right))
 
     def __iadd__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(self._number + right._number)
+        return Class(int.__add__(self, right))
 
-    @override
     def __sub__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-
-        if self._number < right._number:
+        result = int.__sub__(self, right)
+        if result < 0:
             raise OverflowError()
+        return Class(result)
 
-        return Class(self._number - right._number)
-
-    @override
     def __rsub__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-
-        if self._number > left._number:
+        result = int.__sub__(left, self)
+        if result < 0:
             raise OverflowError()
-
-        return Class(left._number - self._number)
+        return Class(result)
 
     def __isub__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        if right._number > self._number:
+        result = int.__sub__(self, right)
+        if result < 0:
             raise OverflowError()
-        return Class(self._number - right._number)
+        return Class(result)
 
-    @override
     def __mul__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(self._number * right._number)
+        return Class(int.__mul__(self, right))
 
-    @override
     def __rmul__(self, left: Self) -> Self:
         return self.__mul__(left)
 
@@ -109,120 +97,91 @@ class Unsigned(Integral):
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(self._number * right._number)
+        return Class(int.__mul__(self, right))
 
-    @override
     def __truediv__(self, other: Self) -> float:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
-        return self._number.__truediv__(other._number)
+        return int.__truediv__(self, other)
 
-    @override
     def __rtruediv__(self, other: Self) -> float:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
-        return self._number.__rtruediv__(other._number)
+        return int.__rtruediv__(self, other)
 
-    @override
     def __floordiv__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
+        return Class(int.__floordiv__(self, right))
 
-        return Class(self._number.__floordiv__(right._number))
-
-    @override
     def __rfloordiv__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-
-        return Class(self._number.__rfloordiv__(left._number))
+        return Class(int.__rfloordiv__(self, left))
 
     def __ifloordiv__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(self._number // right._number)
+        return Class(int.__floordiv__(self, right))
 
-    @override
     def __mod__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
+        return Class(int.__mod__(self, right))
 
-        return Class(self._number % right._number)
-
-    @override
     def __rmod__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-
-        return Class(self._number.__rmod__(left._number))
+        return Class(int.__rmod__(self, left))
 
     def __imod__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
-        return Class(self._number % right._number)
+        return Class(int.__mod__(self, right))
 
-    @override
     def __divmod__(self, right: Self) -> Tuple[Self, Self]:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
+        result = int.__divmod__(self, right)
+        return (Class(result[0]), Class(result[1]))
 
-        result = self._number.__divmod__(right._number)
-        return (
-            Class(result[0]),
-            Class(result[1]),
-        )
-
-    @override
-    def __rdivmod__(
-        self, left: Self
-    ) -> Union[Tuple[Self, Self], NotImplementedType]:
+    def __rdivmod__(self, left: Self) -> Tuple[Self, Self]:
         Class = type(self)
         if not isinstance(left, Class):
-            # No idea why mypy is assuming this is an Any...
-            return NotImplemented  # type: ignore[no-any-return]
+            return NotImplemented
+        result = int.__rdivmod__(self, left)
+        return (Class(result[0]), Class(result[1]))
 
-        result = self._number.__rdivmod__(left._number)
-        return (
-            Class(result[0]),
-            Class(result[1]),
-        )
-
-    @override
     def __pow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
         modulo_int = None
         if modulo is not None:
             if not isinstance(modulo, Class):
                 return NotImplemented
-            modulo_int = modulo._number
-
+            modulo_int = int(modulo)
         if not isinstance(right, Class):
             return NotImplemented
+        return Class(int.__pow__(self, int(right), modulo_int))
 
-        return Class(self._number.__pow__(right._number, modulo_int))
-
-    @override
     def __rpow__(self, left: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
         modulo_int = None
         if modulo is not None:
             if not isinstance(modulo, Class):
                 raise TypeError()
-            modulo_int = modulo._number
-
+            modulo_int = int(modulo)
         if not isinstance(left, Class):
             return NotImplemented
-
-        return Class(self._number.__rpow__(left._number, modulo_int))
+        return Class(int.__rpow__(self, int(left), modulo_int))
 
     def __ipow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
@@ -230,243 +189,201 @@ class Unsigned(Integral):
         if modulo is not None:
             if not isinstance(modulo, Class):
                 raise TypeError()
-            modulo_int = modulo._number
-
+            modulo_int = int(modulo)
         if not isinstance(right, Class):
             return NotImplemented
+        return Class(int.__pow__(self, int(right), modulo_int))
 
-        return Class(self._number.__pow__(right._number, modulo_int))
-
-    @override
     def __xor__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
+        return int.__new__(Class, int.__xor__(self, right))
 
-        return Class(self._number.__xor__(right._number))
-
-    @override
     def __rxor__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
-
-        return Class(self._number.__rxor__(left._number))
+        return int.__new__(Class, int.__rxor__(self, left))
 
     def __ixor__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
+        return int.__new__(Class, int.__xor__(self, right))
 
-        return Class(self._number.__xor__(right._number))
-
-    @override
     def __and__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
+        return int.__new__(Class, int.__and__(self, other))
 
-        return Class(self._number.__and__(other._number))
-
-    @override
     def __rand__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
+        return int.__new__(Class, int.__rand__(self, other))
 
-        return Class(self._number.__rand__(other._number))
-
-    @override
     def __or__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
+        return int.__new__(Class, int.__or__(self, other))
 
-        return Class(self._number.__or__(other._number))
-
-    @override
     def __ror__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
+        return int.__new__(Class, int.__ror__(self, other))
 
-        return Class(self._number.__ror__(other._number))
-
-    @override
     def __neg__(self) -> int:
-        return -self._number
+        return int.__neg__(self)
 
-    @override
     def __pos__(self) -> Self:
-        return type(self)(self._number)
+        return self
 
-    @override
     def __invert__(self) -> Self:
         # TODO: How should this behave?
         raise NotImplementedError()
 
-    @override
     def __floor__(self) -> Self:
-        return type(self)(self)
+        return self
 
-    @override
     def __ceil__(self) -> Self:
-        return type(self)(self)
+        return self
 
-    @override
     def __int__(self) -> int:
-        return self._number
+        return int.__int__(self)
 
-    @override
+    def __index__(self) -> int:
+        return int.__index__(self)
+
     def __eq__(self, other: object) -> bool:
-        # Unlike the other comparison dunder methods (eg. `__lt__`, `__ge__`,
-        # etc.), `__eq__` is expected to work with any object, so mypy doesn't
-        # detect comparisons between `Uint` and `int` as errors. Instead of
-        # throwing a `TypeError` at runtime, we try to behave sanely and
-        # soundly by converting `other` to an integer if possible, then
-        # comparing.
+        # Unlike the other comparison dunder methods, `__eq__` is expected to
+        # work with any object, so mypy doesn't detect comparisons between
+        # `Uint` and `int` as errors. Instead of throwing a `TypeError` at
+        # runtime, we try to behave sanely and soundly by converting `other`
+        # to an integer if possible, then comparing.
         if isinstance(other, Unsigned):
-            return self._number == other._number
+            return int.__eq__(self, other)
         elif isinstance(other, SupportsInt):
             other_int = int(other)
             if other != other_int:
-                # If `other` doesn't equal `int(other)`, `self` definitely
-                # doesn't equal `other` since `self` has to be an integer.
                 return False
-            return self._number == other_int
+            return int.__eq__(self, other_int)
         return NotImplemented
 
-    @override
     def __le__(self, other: Self) -> bool:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
-
-        return self._number <= other._number
+        return int.__le__(self, other)
 
     def __ge__(self, other: Self) -> bool:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
+        return int.__ge__(self, other)
 
-        return self._number >= other._number
-
-    @override
     def __lt__(self, other: Self) -> bool:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
-
-        return self._number < other._number
+        return int.__lt__(self, other)
 
     def __gt__(self, other: Self) -> bool:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
+        return int.__gt__(self, other)
 
-        return self._number > other._number
-
-    @override
     def __round__(self, ndigits: Optional[int] = None) -> Self:
-        return type(self)(self)
+        return self
 
-    @override
     def __trunc__(self) -> Self:
-        return type(self)(self)
+        return self
 
-    @override
     def __rshift__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
+        return int.__new__(Class, int.__rshift__(self, right))
 
-        return Class(self._number >> right._number)
-
-    @override
     def __rrshift__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
+        return int.__new__(Class, int.__rrshift__(self, left))
 
-        return Class(self._number.__rrshift__(left._number))
-
-    @override
     def __lshift__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
+        return Class(int.__lshift__(self, right))
 
-        return Class(self._number << right._number)
-
-    @override
     def __rlshift__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
             return NotImplemented
+        return Class(int.__rlshift__(self, left))
 
-        return Class(self._number.__rlshift__(left._number))
+    def __hash__(self) -> int:
+        return hash((type(self), int.__int__(self)))
 
-    @override
-    # Well, mypy is straight up incorrect on this.
-    def __hash__(self) -> int:  # type: ignore[override]
-        return hash((type(self), self._number))
-
-    @override
     def __repr__(self) -> str:
-        return "{}({})".format(type(self).__name__, self._number)
+        return "{}({})".format(type(self).__name__, int.__int__(self))
 
-    @override
     def __str__(self) -> str:
-        return str(self._number)
+        return int.__repr__(self)
 
     def to_be_bytes64(self) -> Bytes64:
         """
         Converts this unsigned integer into its big endian representation with
         exactly 64 bytes.
         """
-        return Bytes64(self._number.to_bytes(64, "big"))
+        return Bytes64(int.to_bytes(self, 64, "big"))
 
     def to_be_bytes32(self) -> Bytes32:
         """
         Converts this unsigned integer into its big endian representation
         with exactly 32 bytes.
         """
-        return Bytes32(self._number.to_bytes(32, "big"))
+        return Bytes32(int.to_bytes(self, 32, "big"))
 
     def to_bytes1(self) -> Bytes1:
         """
         Converts this unsigned integer into a byte sequence with exactly 1
         bytes.
         """
-        return Bytes1(self._number.to_bytes(1, "little"))
+        return Bytes1(int.to_bytes(self, 1, "little"))
 
     def to_le_bytes4(self) -> "Bytes4":
         """
         Converts this unsigned integer into its little endian representation,
         with exactly 4 bytes.
         """
-        return Bytes4(self._number.to_bytes(4, "little"))
+        return Bytes4(int.to_bytes(self, 4, "little"))
 
     def to_be_bytes4(self) -> "Bytes4":
         """
         Converts this unsigned integer into its big endian representation, with
         exactly 4 bytes.
         """
-        return Bytes4(self._number.to_bytes(4, "big"))
+        return Bytes4(int.to_bytes(self, 4, "big"))
 
     def to_le_bytes8(self) -> "Bytes8":
         """
         Converts this fixed sized unsigned integer into its little endian
         representation, with exactly 8 bytes.
         """
-        return Bytes8(self._number.to_bytes(8, "little"))
+        return Bytes8(int.to_bytes(self, 8, "little"))
 
     def to_be_bytes8(self) -> "Bytes8":
         """
         Converts this unsigned integer into its big endian representation, with
         exactly 8 bytes.
         """
-        return Bytes8(self._number.to_bytes(8, "big"))
+        return Bytes8(int.to_bytes(self, 8, "big"))
 
     def to_bytes(
         self,
@@ -479,46 +396,46 @@ class Unsigned(Integral):
         if length is None:
             length_int = 1
         else:
-            length_int = int(length)
-        return self._number.to_bytes(length=length_int, byteorder=byteorder)
+            length_int = int.__int__(length)
+        return int.to_bytes(self, length=length_int, byteorder=byteorder)
 
     def to_be_bytes(self) -> "Bytes":
         """
         Converts this unsigned integer into its big endian representation,
         without padding.
         """
-        bit_length = self._number.bit_length()
+        bit_length = int.bit_length(self)
         byte_length = (bit_length + 7) // 8
-        return self._number.to_bytes(byte_length, "big")
+        return int.to_bytes(self, byte_length, "big")
 
     def to_le_bytes(self) -> "Bytes":
         """
         Converts this unsigned integer into its little endian representation,
         without padding.
         """
-        bit_length = self._number.bit_length()
+        bit_length = int.bit_length(self)
         number_bytes = (bit_length + 7) // 8
-        return self._number.to_bytes(number_bytes, "little")
+        return int.to_bytes(self, number_bytes, "little")
 
     def to_le_bytes32(self) -> Bytes32:
         """
         Converts this unsigned integer into its little endian representation
         with exactly 32 bytes.
         """
-        return Bytes32(self._number.to_bytes(32, "little"))
+        return Bytes32(int.to_bytes(self, 32, "little"))
 
     def to_le_bytes64(self) -> Bytes64:
         """
         Converts this unsigned integer into its little endian representation
         with exactly 64 bytes.
         """
-        return Bytes64(self._number.to_bytes(64, "little"))
+        return Bytes64(int.to_bytes(self, 64, "little"))
 
     def bit_length(self) -> "Uint":
         """
         Minimum number of bits required to represent this number in binary.
         """
-        return Uint(self._number.bit_length())
+        return Uint(int.bit_length(self))
 
 
 class Uint(Unsigned):
@@ -542,7 +459,6 @@ class Uint(Unsigned):
         """
         return cls(int.from_bytes(buffer, "little"))
 
-    @override
     def _in_range(self, value: int) -> bool:
         return value >= 0
 
@@ -565,17 +481,24 @@ class FixedUnsigned(Unsigned):
     Largest value that can be represented by this integer type.
     """
 
+    _MAX_INT: ClassVar[int]
+    """
+    TODO: note we could have just used int(MAX_VALUE) but I imagine performance wise
+    TODO: this would be bad. Haven't benchmarked though.
+    Plain Python int mask `(2**bits) - 1`. Set by `_max_value()` at class
+    creation time.
+    """
+
     @classmethod
     def from_be_bytes(cls: Type[Self], buffer: _BytesLike) -> Self:
         """
         Converts a sequence of bytes into a fixed sized unsigned integer
         from its big endian representation.
         """
-        bits = cls.MAX_VALUE._number.bit_length()
+        bits = cls._MAX_INT.bit_length()
         byte_count = (bits + 7) // 8
         if len(buffer) > byte_count:
             raise ValueError()
-
         return cls(int.from_bytes(buffer, "big"))
 
     @classmethod
@@ -584,11 +507,10 @@ class FixedUnsigned(Unsigned):
         Converts a sequence of bytes into a fixed sized unsigned integer
         from its little endian representation.
         """
-        bits = cls.MAX_VALUE._number.bit_length()
+        bits = cls._MAX_INT.bit_length()
         byte_count = (bits + 7) // 8
         if len(buffer) > byte_count:
             raise ValueError()
-
         return cls(int.from_bytes(buffer, "little"))
 
     @classmethod
@@ -597,20 +519,16 @@ class FixedUnsigned(Unsigned):
         Creates an unsigned integer representing `value` using two's
         complement.
         """
-        if value >= (cls.MAX_VALUE._number // 2 + 1):
+        if value >= (cls._MAX_INT // 2 + 1):
             raise OverflowError
-
         if value >= 0:
             return cls(value)
-
-        if value < (-cls.MAX_VALUE // 2):
+        if value < (-(cls._MAX_INT // 2) - 1):
             raise OverflowError
+        return cls(value & cls._MAX_INT)
 
-        return cls(value & cls.MAX_VALUE._number)
-
-    @override
     def _in_range(self, value: int) -> bool:
-        return value >= 0 and value <= self.MAX_VALUE._number
+        return 0 <= value <= type(self)._MAX_INT
 
     def wrapping_add(self, right: Self) -> Self:
         """
@@ -619,9 +537,7 @@ class FixedUnsigned(Unsigned):
         Class = type(self)
         if not isinstance(right, Class):
             raise TypeError()
-
-        # This is a fast way of ensuring that the result is < (2 ** 256)
-        return Class((self._number + right._number) & self.MAX_VALUE._number)
+        return int.__new__(Class, (int.__add__(self, right)) & self._MAX_INT)
 
     def wrapping_sub(self, right: Self) -> Self:
         """
@@ -630,9 +546,7 @@ class FixedUnsigned(Unsigned):
         Class = type(self)
         if not isinstance(right, Class):
             raise TypeError()
-
-        # This is a fast way of ensuring that the result is < (2 ** 256)
-        return Class((self._number - right._number) & self.MAX_VALUE._number)
+        return int.__new__(Class, (int.__sub__(self, right)) & self._MAX_INT)
 
     def wrapping_mul(self, right: Self) -> Self:
         """
@@ -643,7 +557,7 @@ class FixedUnsigned(Unsigned):
             raise TypeError
 
         # This is a fast way of ensuring that the result is < (2 ** 256)
-        return Class((self._number * right._number) & self.MAX_VALUE._number)
+        return int.__new__(Class, (int.__mul__(self, right)) & self._MAX_INT)
 
     def wrapping_pow(self, right: Self, modulo: Optional[Self] = None) -> Self:
         """
@@ -656,44 +570,40 @@ class FixedUnsigned(Unsigned):
         if modulo is not None:
             if not isinstance(modulo, Class):
                 raise TypeError()
-            modulo_int = modulo._number
-
+            modulo_int = int.__int__(modulo)
         if not isinstance(right, Class):
             raise TypeError()
-
-        # This is a fast way of ensuring that the result is < (2 ** 256)
-        return Class(
-            self._number.__pow__(right._number, modulo_int)
-            & self.MAX_VALUE._number
+        return int.__new__(
+            Class,
+            int.__pow__(self, int.__int__(right), modulo_int) & self._MAX_INT,
         )
 
-    @override
     def __invert__(self: Self) -> Self:
-        return type(self)(
-            int.__invert__(self._number) & self.MAX_VALUE._number
+        return int.__new__(
+            type(self),
+            int.__invert__(self) & self._MAX_INT,
         )
 
     def to_signed(self) -> int:
         """
         Decodes a signed integer from its two's complement representation.
         """
-        bits = self.MAX_VALUE._number.bit_length()
+        bits = self._MAX_INT.bit_length()
         bits = 8 * ((bits + 7) // 8)
-        if self._number.bit_length() < bits:
+        if int.bit_length(self) < bits:
             # This means that the sign bit is 0
-            return int(self)
-
+            return int.__int__(self)
         # -1 * (2's complement of value)
-        return int(self) - (self.MAX_VALUE._number + 1)
+        return int.__int__(self) - (self._MAX_INT + 1)
 
 
 _V = TypeVar("_V", bound=FixedUnsigned)
 
 
 def _max_value(class_: Type[_V], bits: int) -> _V:
-    value = object.__new__(class_)
-    value._number = (2**bits) - 1  # type: ignore[misc]
-    return value
+    max_int = (2**bits) - 1
+    class_._MAX_INT = max_int
+    return int.__new__(class_, max_int)
 
 
 class U256(FixedUnsigned):
