@@ -322,7 +322,7 @@ class Unsigned(int):
         return int.__new__(Class, int.__lshift__(left, self))
 
     def __hash__(self) -> int:
-        return hash((type(self), int.__int__(self)))
+        return int.__hash__(self)
 
     def __repr__(self) -> str:
         return "{}({})".format(type(self).__name__, int.__repr__(self))

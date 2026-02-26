@@ -1638,8 +1638,8 @@ def test_bug_preexisting_round_ignores_ndigits(Class: Type[Unsigned]) -> None:
     assert round(16, -1) == 20  # plain int rounding is correct
 
 
-def test_bug_preexisting_hash_invariant_violation() -> None:
-    # U256(5) == Uint(5) is True, but their hashes differ.
-    # This violates: a == b implies hash(a) == hash(b).
+def test_hash_invariant() -> None:
+    # a == b implies hash(a) == hash(b)
     assert U256(5) == Uint(5)
-    assert hash(U256(5)) != hash(Uint(5))  # wrong: should be equal
+    assert hash(U256(5)) == hash(Uint(5))
+    assert hash(U256(5)) == hash(5)
