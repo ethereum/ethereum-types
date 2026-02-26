@@ -29,8 +29,8 @@ FromBytesType: TypeAlias = Union[Type[Uint], Type[FixedUnsigned]]
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_new(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    assert not isinstance(value, int)  # type: ignore[unreachable]
-    assert isinstance(value, Class)
+    assert isinstance(value, int)  # type: ignore[unreachable]
+    assert isinstance(value, Class)  # type: ignore[unreachable]
     assert isinstance(value, Unsigned)
 
 
@@ -41,6 +41,16 @@ def test_new_negative(Class: Type[Unsigned]) -> None:
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
+def test_new_non_int(Class: Type[Unsigned]) -> None:
+    with pytest.raises(TypeError):
+        Class(None)
+    with pytest.raises(TypeError):
+        Class([1, 2])
+    with pytest.raises(TypeError):
+        Class(object())
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
 def test_new_float(Class: Type[Unsigned]) -> None:
     assert Class(0.1) == Class(0)
     assert Class(1.0) == Class(1)
@@ -48,7 +58,7 @@ def test_new_float(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", FIXED)
 def test_fixed_new_max_value(Class: Type[FixedUnsigned]) -> None:
-    value = Class(Class.MAX_VALUE._number)
+    value = Class(int(Class.MAX_VALUE))
     assert isinstance(value, Class)
     assert isinstance(value, FixedUnsigned)
     assert value == Class.MAX_VALUE
@@ -57,7 +67,7 @@ def test_fixed_new_max_value(Class: Type[FixedUnsigned]) -> None:
 @pytest.mark.parametrize("Class", FIXED)
 def test_fixed_new_too_large(Class: Type[FixedUnsigned]) -> None:
     with pytest.raises(OverflowError):
-        Class(Class.MAX_VALUE._number + 1)
+        Class(int(Class.MAX_VALUE) + 1)
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -67,8 +77,9 @@ def test_radd(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_radd_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        4 + Class(5)  # type: ignore[operator]
+    result = 4 + Class(5)  # type: ignore[operator]
+    assert result == 9
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", FIXED)
@@ -81,8 +92,9 @@ def test_fixed_radd_overflow(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_radd_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (1.0) + Class(5)  # type: ignore[operator]
+    result = (1.0) + Class(5)  # type: ignore[operator]
+    assert result == 6.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -94,14 +106,16 @@ def test_add(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_add_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) + 4  # type: ignore[operator]
+    result = Class(5) + 4  # type: ignore[operator]
+    assert result == 9
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_add_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) + (1.0)  # type: ignore[operator]
+    result = Class(5) + (1.0)  # type: ignore[operator]
+    assert result == 6.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", FIXED)
@@ -123,15 +137,17 @@ def test_iadd(Class: Type[Unsigned]) -> None:
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_iadd_int(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value += 4  # type: ignore[arg-type]
+    value += 4  # type: ignore[arg-type]
+    assert value == 9
+    assert type(value) is int  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_iadd_float(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value += 1.0  # type: ignore[arg-type]
+    value += 1.0  # type: ignore[arg-type]
+    assert value == 6.0
+    assert type(value) is float  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", FIXED)
@@ -151,8 +167,9 @@ def test_rsub(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rsub_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        6 - Class(5)  # type: ignore[operator]
+    result = 6 - Class(5)  # type: ignore[operator]
+    assert result == 1
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -163,8 +180,9 @@ def test_rsub_underflow(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rsub_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (6.0) - Class(5)  # type: ignore[operator]
+    result = (6.0) - Class(5)  # type: ignore[operator]
+    assert result == 1.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -182,14 +200,16 @@ def test_sub_underflow(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_sub_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) - (-4)  # type: ignore[operator]
+    result = Class(5) - (-4)  # type: ignore[operator]
+    assert result == 9
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_sub_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) - (1.0)  # type: ignore[operator]
+    result = Class(5) - (1.0)  # type: ignore[operator]
+    assert result == 4.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -213,17 +233,17 @@ def test_isub_underflow(Class: Type[Unsigned]) -> None:
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_isub_int(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value -= -4  # type: ignore[arg-type]
-    assert value == Class(5)
+    value -= -4  # type: ignore[arg-type]
+    assert value == 9
+    assert type(value) is int  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_isub_float(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value -= 1.0  # type: ignore[arg-type]
-    assert value == Class(5)
+    value -= 1.0  # type: ignore[arg-type]
+    assert value == 4.0
+    assert type(value) is float  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -235,14 +255,16 @@ def test_rmul(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rmul_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        4 * Class(5)  # type: ignore[operator]
+    result = 4 * Class(5)  # type: ignore[operator]
+    assert result == 20
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rmul_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (1.0) * Class(5)  # type: ignore[operator]
+    result = (1.0) * Class(5)  # type: ignore[operator]
+    assert result == 5.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", FIXED)
@@ -260,16 +282,16 @@ def test_mul(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_mul_int(Class: Type[Unsigned]) -> None:
-    value = Class(5)
-    with pytest.raises(TypeError):
-        value * 4  # type: ignore[operator]
+    result = Class(5) * 4  # type: ignore[operator]
+    assert result == 20
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_mul_float(Class: Type[Unsigned]) -> None:
-    value = Class(5)
-    with pytest.raises(TypeError):
-        value * (1.0)  # type: ignore[operator]
+    result = Class(5) * (1.0)  # type: ignore[operator]
+    assert result == 5.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", FIXED)
@@ -292,17 +314,17 @@ def test_imul(Class: Type[Unsigned]) -> None:
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_imul_int(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value *= 4  # type: ignore[arg-type]
-    assert value == Class(5)
+    value *= 4  # type: ignore[arg-type]
+    assert value == 20
+    assert type(value) is int  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_imul_float(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value *= 1.0  # type: ignore[arg-type]
-    assert value == Class(5)
+    value *= 1.0  # type: ignore[arg-type]
+    assert value == 5.0
+    assert type(value) is float  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", FIXED)
@@ -322,14 +344,16 @@ def test_floordiv(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_floordiv_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) // 2  # type: ignore[operator]
+    result = Class(5) // 2  # type: ignore[operator]
+    assert result == 2
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_floordiv_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) // 2.0  # type: ignore[operator]
+    result = Class(5) // 2.0  # type: ignore[operator]
+    assert result == 2.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -341,14 +365,16 @@ def test_rfloordiv(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rfloordiv_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (-2) // Class(5)  # type: ignore[operator]
+    result = (-2) // Class(5)  # type: ignore[operator]
+    assert result == -1
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rfloordiv_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        5.0 // Class(2)  # type: ignore[operator]
+    result = 5.0 // Class(2)  # type: ignore[operator]
+    assert result == 2.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -364,9 +390,9 @@ def test_ifloordiv(Class: Type[Unsigned]) -> None:
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_ifloordiv_int(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value //= -2  # type: ignore[arg-type]
-    assert value == Class(5)
+    value //= -2  # type: ignore[arg-type]
+    assert value == -3
+    assert type(value) is int  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -378,14 +404,16 @@ def test_rmod(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rmod_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (-4) % Class(5)  # type: ignore[operator]
+    result = (-4) % Class(5)  # type: ignore[operator]
+    assert result == 1
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rmod_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (6.0) % Class(5)  # type: ignore[operator]
+    result = (6.0) % Class(5)  # type: ignore[operator]
+    assert result == 1.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -397,14 +425,16 @@ def test_mod(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_mod_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) % (-4)  # type: ignore[operator]
+    result = Class(5) % (-4)  # type: ignore[operator]
+    assert result == -3
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_mod_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(5) % (1.0)  # type: ignore[operator]
+    result = Class(5) % (1.0)  # type: ignore[operator]
+    assert result == 0.0
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -420,17 +450,17 @@ def test_imod(Class: Type[Unsigned]) -> None:
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_imod_int(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value %= -4  # type: ignore[arg-type]
-    assert value == Class(5)
+    value %= -4  # type: ignore[arg-type]
+    assert value == -3
+    assert type(value) is int  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_imod_float(Class: Type[Unsigned]) -> None:
     value = Class(5)
-    with pytest.raises(TypeError):
-        value %= 1.0  # type: ignore[arg-type]
-    assert value == Class(5)
+    value %= 1.0  # type: ignore[arg-type]
+    assert value == 0.0
+    assert type(value) is float  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -444,14 +474,16 @@ def test_divmod(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_divmod_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        divmod(Class(5), -2)  # type: ignore[operator]
+    q, r = divmod(Class(5), -2)  # type: ignore[operator]
+    assert q == -3
+    assert r == -1
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_divmod_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        divmod(Class(5), 2.0)  # type: ignore[operator]
+    q, r = divmod(Class(5), 2.0)  # type: ignore[operator]
+    assert q == 2.0
+    assert r == 1.0
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -463,14 +495,16 @@ def test_rdivmod(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rdivmod_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        divmod(5, Class(2))  # type: ignore[operator]
+    q, r = divmod(5, Class(2))  # type: ignore[operator]
+    assert q == 2
+    assert r == 1
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rdivmod_float(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        divmod(5.0, Class(2))  # type: ignore[operator]
+    q, r = divmod(5.0, Class(2))  # type: ignore[operator]
+    assert q == 2.0
+    assert r == 1.0
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -488,8 +522,9 @@ def test_fixed_pow_overflow(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_pow_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(3) ** -2  # type: ignore[operator]
+    result = Class(3) ** -2  # type: ignore[operator]
+    assert result == 3**-2
+    assert type(result) is float
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -501,11 +536,11 @@ def test_pow_modulo(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_pow_modulo_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        pow(Class(4), Class(2), -3)  # type: ignore[misc]
+    result1 = pow(Class(4), Class(2), -3)  # type: ignore[misc]
+    assert result1 == pow(4, 2, -3)
 
-    with pytest.raises(TypeError):
-        pow(Class(4), 2, Class(3))  # type: ignore[misc]
+    result2 = pow(Class(4), 2, Class(3))  # type: ignore[misc]
+    assert result2 == 1
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -517,8 +552,9 @@ def test_rpow(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rpow_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (-3) ** Class(2)  # type: ignore[operator]
+    result = (-3) ** Class(2)  # type: ignore[operator]
+    assert result == 9
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -553,8 +589,9 @@ def test_ipow(Class: Type[Unsigned]) -> None:
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_ipow_int(Class: Type[Unsigned]) -> None:
     value = Class(3)
-    with pytest.raises(TypeError):
-        value **= -2  # type: ignore[arg-type]
+    value **= -2  # type: ignore[arg-type]
+    assert value == 3**-2
+    assert type(value) is float  # type: ignore[comparison-overlap, unreachable]
 
 
 @pytest.mark.parametrize("Class", FIXED)
@@ -902,7 +939,7 @@ def test_fixed_wrapping_pow_modulo_int(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", FIXED)
 def test_fixed_from_be_bytes_too_large(Class: Type[FixedUnsigned]) -> None:
-    bits = Class.MAX_VALUE._number.bit_length()
+    bits = int(Class.MAX_VALUE).bit_length()
     byte_count = (bits + 7) // 8
     byte_count += 1
 
@@ -912,7 +949,7 @@ def test_fixed_from_be_bytes_too_large(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", FIXED)
 def test_fixed_from_le_bytes_too_large(Class: Type[FixedUnsigned]) -> None:
-    bits = Class.MAX_VALUE._number.bit_length()
+    bits = int(Class.MAX_VALUE).bit_length()
     byte_count = (bits + 7) // 8
     byte_count += 1
 
@@ -1040,6 +1077,12 @@ def test_int(Class: Type[Unsigned]) -> None:
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
+def test_index(Class: Type[Unsigned]) -> None:
+    value = Class(3)
+    assert value.__index__() == 3
+
+
+@pytest.mark.parametrize("Class", UNSIGNED)
 def test_floor_same(Class: Type[Unsigned]) -> None:
     a = Class(1)
     b = floor(a)
@@ -1086,8 +1129,9 @@ def test_le(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_le_different_types(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(1) <= 1  # type: ignore[operator] # noqa: B015
+    assert Class(1) <= 1  # type: ignore[operator]
+    assert Class(0) <= 1  # type: ignore[operator]
+    assert not (Class(2) <= 1)  # type: ignore[operator]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1099,8 +1143,9 @@ def test_ge(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_ge_different_types(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(1) >= 1  # type: ignore[operator] # noqa: B015
+    assert Class(1) >= 1  # type: ignore[operator]
+    assert Class(2) >= 1  # type: ignore[operator]
+    assert not (Class(0) >= 1)  # type: ignore[operator]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1112,10 +1157,10 @@ def test_lt(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_lt_different_types(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(1) < 1  # type: ignore[operator] # noqa: B015
-    with pytest.raises(TypeError):
-        1 < Class(1)  # type: ignore[operator] # noqa: B015
+    assert not (Class(1) < 1)  # type: ignore[operator]
+    assert Class(0) < 1  # type: ignore[operator]
+    assert not (1 < Class(1))  # type: ignore[operator]
+    assert 0 < Class(1)  # type: ignore[operator]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1127,16 +1172,17 @@ def test_gt(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_gt_different_types(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(1) > 1  # type: ignore[operator] # noqa: B015
-    with pytest.raises(TypeError):
-        1 > Class(1)  # type: ignore[operator] # noqa: B015
+    assert not (Class(1) > 1)  # type: ignore[operator]
+    assert Class(2) > 1  # type: ignore[operator]
+    assert not (1 > Class(1))  # type: ignore[operator]
+    assert 2 > Class(1)  # type: ignore[operator]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_lshift_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(3) << 4  # type: ignore[operator]
+    result = Class(3) << 4  # type: ignore[operator]
+    assert result == 48
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1144,6 +1190,19 @@ def test_lshift(Class: Type[Unsigned]) -> None:
     expected = Class(3 << 4)
     actual = Class(3) << Class(4)
     assert expected == actual
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_lshift_overflow(Class: Type[FixedUnsigned]) -> None:
+    with pytest.raises(OverflowError):
+        Class(1) << Class(int(Class.MAX_VALUE).bit_length())
+
+
+@pytest.mark.parametrize("Class", FIXED)
+def test_fixed_rlshift_overflow(Class: Type[FixedUnsigned]) -> None:
+    bits = int(Class.MAX_VALUE).bit_length()
+    with pytest.raises(OverflowError):
+        Class(bits).__rlshift__(Class(1))
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1167,8 +1226,9 @@ def test_rshift(Class: Type[Unsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_rshift_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(3) >> 4  # type: ignore[operator]
+    result = Class(3) >> 4  # type: ignore[operator]
+    assert result == 0
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1236,8 +1296,9 @@ def test_fixed_bitwise_rand(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_bitwise_rand_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (2**256) & Class(0)  # type: ignore[operator]
+    result = (2**256) & Class(0)  # type: ignore[operator]
+    assert result == 0
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1255,8 +1316,9 @@ def test_fixed_bitwise_and(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_bitwise_and_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(0) & (2**256)  # type: ignore[operator]
+    result = Class(0) & (2**256)  # type: ignore[operator]
+    assert result == 0
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1277,8 +1339,9 @@ def test_fixed_bitwise_ror(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_bitwise_ror_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        (2**256) | Class(0)  # type: ignore[operator]
+    result = (2**256) | Class(0)  # type: ignore[operator]
+    assert result == 2**256
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1299,8 +1362,9 @@ def test_fixed_bitwise_or(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_bitwise_or_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(0) | (2**256)  # type: ignore[operator]
+    result = Class(0) | (2**256)  # type: ignore[operator]
+    assert result == 2**256
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1321,8 +1385,9 @@ def test_fixed_bitwise_xor(Class: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("Class", UNSIGNED)
 def test_bitwise_xor_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class(0) ^ (2**256)  # type: ignore[operator]
+    result = Class(0) ^ (2**256)  # type: ignore[operator]
+    assert result == 2**256
+    assert type(result) is int
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)
@@ -1539,10 +1604,27 @@ def test_fixed_from_signed_overflow(Class: Type[FixedUnsigned]) -> None:
 def test_unsigned_in_range() -> None:
     number = Uint(0)
     with pytest.raises(NotImplementedError):
-        Unsigned._in_range(number, 0)
+        Unsigned._in_range(number, 0)  # type: ignore[attr-defined]
 
 
 def test_ulen() -> None:
     actual = ulen([1, 2, 3])
     assert isinstance(actual, Uint)
     assert actual == Uint(3)
+
+
+# I believe these are bugs
+
+@pytest.mark.parametrize("Class", UNSIGNED)
+def test_bug_preexisting_round_ignores_ndigits(Class: Type[Unsigned]) -> None:
+    # round(16, -1) == 20, but round(U256(16), -1) returns U256(16).
+    # __round__ ignores the ndigits parameter.
+    assert round(Class(16), -1) == Class(16)  # wrong: should be Class(20)
+    assert round(16, -1) == 20  # plain int rouding is correct
+
+
+def test_bug_preexisting_hash_invariant_violation() -> None:
+    # U256(5) == Uint(5) is True, but their hashes differ.
+    # This violates: a == b implies hash(a) == hash(b).
+    assert U256(5) == Uint(5)
+    assert hash(U256(5)) != hash(Uint(5))  # wrong: should be equal
