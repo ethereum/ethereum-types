@@ -4,12 +4,15 @@ Sequences of 256-bit values.
 
 from typing import TYPE_CHECKING, Any, ClassVar, Type, TypeVar
 
+from mypy_extensions import mypyc_attr
+
 if TYPE_CHECKING:
     from .numeric import Uint
 
 B = TypeVar("B", bound="FixedBytes")
 
 
+@mypyc_attr(native_class=False)
 class FixedBytes(bytes):
     """
     Superclass for fixed sized byte arrays. Not intended to be used directly,
@@ -27,7 +30,7 @@ class FixedBytes(bytes):
         """
         Create a new instance, ensuring the result has the correct length.
         """
-        result = super(FixedBytes, cls).__new__(cls, *args, **kwargs)
+        result = bytes.__new__(cls, *args, **kwargs)
         if len(result) != cls.LENGTH:
             raise ValueError(
                 f"expected {cls.LENGTH} bytes but got {len(result)}"
@@ -43,6 +46,7 @@ class FixedBytes(bytes):
         return Uint(self.count(b"\0"))
 
 
+@mypyc_attr(native_class=False)
 class Bytes0(FixedBytes):
     """
     Byte array of exactly zero elements.
@@ -54,6 +58,7 @@ class Bytes0(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes1(FixedBytes):
     """
     Byte array of exactly one elements.
@@ -65,6 +70,7 @@ class Bytes1(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes4(FixedBytes):
     """
     Byte array of exactly four elements.
@@ -76,6 +82,7 @@ class Bytes4(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes8(FixedBytes):
     """
     Byte array of exactly eight elements.
@@ -87,6 +94,7 @@ class Bytes8(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes20(FixedBytes):
     """
     Byte array of exactly 20 elements.
@@ -98,6 +106,7 @@ class Bytes20(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes32(FixedBytes):
     """
     Byte array of exactly 32 elements.
@@ -109,6 +118,7 @@ class Bytes32(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes48(FixedBytes):
     """
     Byte array of exactly 48 elements.
@@ -117,6 +127,7 @@ class Bytes48(FixedBytes):
     LENGTH = 48
 
 
+@mypyc_attr(native_class=False)
 class Bytes64(FixedBytes):
     """
     Byte array of exactly 64 elements.
@@ -128,6 +139,7 @@ class Bytes64(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes96(FixedBytes):
     """
     Byte array of exactly 96 elements.
@@ -139,6 +151,7 @@ class Bytes96(FixedBytes):
     """
 
 
+@mypyc_attr(native_class=False)
 class Bytes256(FixedBytes):
     """
     Byte array of exactly 256 elements.

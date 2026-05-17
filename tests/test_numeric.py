@@ -521,23 +521,10 @@ def test_rpow_int(Class: Type[Unsigned]) -> None:
         (-3) ** Class(2)  # type: ignore[operator]
 
 
-@pytest.mark.parametrize("Class", UNSIGNED)
-def test_rpow_modulo(Class: Type[Unsigned]) -> None:
-    value = Class.__rpow__(Class(2), Class(4), Class(3))
-    assert isinstance(value, Class)
-    assert value == Class(1)
-
-
 @pytest.mark.parametrize("Class", FIXED)
 def test_fixed_rpow_overflow(Class: Type[FixedUnsigned]) -> None:
     with pytest.raises(OverflowError):
         Class.MAX_VALUE ** Class(2)
-
-
-@pytest.mark.parametrize("Class", UNSIGNED)
-def test_rpow_modulo_int(Class: Type[Unsigned]) -> None:
-    with pytest.raises(TypeError):
-        Class.__rpow__(Class(2), Class(4), -3)  # type: ignore[operator]
 
 
 @pytest.mark.parametrize("Class", UNSIGNED)

@@ -14,7 +14,10 @@ from typing import (
     runtime_checkable,
 )
 
+from mypy_extensions import mypyc_attr
 
+
+@mypyc_attr(native_class=False)
 @runtime_checkable
 class SlottedFreezable(Protocol):
     """
