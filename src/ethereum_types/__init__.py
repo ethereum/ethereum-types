@@ -19,4 +19,4 @@ sequences containing an exact number of bytes.
 [`Bytes64`]: ref:ethereum_types.bytes.Bytes64
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

@@ -3,7 +3,6 @@ Numeric types (mostly integers.)
 """
 
 from abc import abstractmethod
-from numbers import Integral
 from types import NotImplementedType
 from typing import (
     ClassVar,
@@ -14,10 +13,11 @@ from typing import (
     SupportsInt,
     Tuple,
     Type,
-    TypeVar,
     Union,
+    cast,
 )
 
+from mypy_extensions import mypyc_attr
 from typing_extensions import Self, TypeAlias, override
 
 from .bytes import Bytes, Bytes1, Bytes4, Bytes8, Bytes32, Bytes64
@@ -25,7 +25,14 @@ from .bytes import Bytes, Bytes1, Bytes4, Bytes8, Bytes32, Bytes64
 _BytesLike: TypeAlias = Union[bytes, bytearray, memoryview]
 
 
-class Unsigned(Integral):
+def _max_value(bits: int) -> int:
+    assert bits >= 0
+    value = (2**bits) - 1
+    return cast(int, value)  # 2**-1 == 0.5
+
+
+@mypyc_attr(acyclic=True)
+class Unsigned:
     """
     Base of integer types.
     """
@@ -43,15 +50,12 @@ class Unsigned(Integral):
     def _in_range(self, value: int) -> bool:
         raise NotImplementedError
 
-    @override
     def __abs__(self) -> Self:
         return type(self)(self)
 
-    @override
     def __radd__(self, left: Self) -> Self:
         return self.__add__(left)
 
-    @override
     def __add__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
@@ -64,7 +68,6 @@ class Unsigned(Integral):
             return NotImplemented
         return Class(self._number + right._number)
 
-    @override
     def __sub__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
@@ -75,7 +78,6 @@ class Unsigned(Integral):
 
         return Class(self._number - right._number)
 
-    @override
     def __rsub__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
@@ -94,14 +96,12 @@ class Unsigned(Integral):
             raise OverflowError()
         return Class(self._number - right._number)
 
-    @override
     def __mul__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
             return NotImplemented
         return Class(self._number * right._number)
 
-    @override
     def __rmul__(self, left: Self) -> Self:
         return self.__mul__(left)
 
@@ -111,21 +111,18 @@ class Unsigned(Integral):
             return NotImplemented
         return Class(self._number * right._number)
 
-    @override
     def __truediv__(self, other: Self) -> float:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
         return self._number.__truediv__(other._number)
 
-    @override
     def __rtruediv__(self, other: Self) -> float:
         Class = type(self)
         if not isinstance(other, Class):
             return NotImplemented
         return self._number.__rtruediv__(other._number)
 
-    @override
     def __floordiv__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
@@ -133,7 +130,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__floordiv__(right._number))
 
-    @override
     def __rfloordiv__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
@@ -147,7 +143,6 @@ class Unsigned(Integral):
             return NotImplemented
         return Class(self._number // right._number)
 
-    @override
     def __mod__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
@@ -155,7 +150,6 @@ class Unsigned(Integral):
 
         return Class(self._number % right._number)
 
-    @override
     def __rmod__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
@@ -169,7 +163,6 @@ class Unsigned(Integral):
             return NotImplemented
         return Class(self._number % right._number)
 
-    @override
     def __divmod__(self, right: Self) -> Tuple[Self, Self]:
         Class = type(self)
         if not isinstance(right, Class):
@@ -181,7 +174,6 @@ class Unsigned(Integral):
             Class(result[1]),
         )
 
-    @override
     def __rdivmod__(
         self, left: Self
     ) -> Union[Tuple[Self, Self], NotImplementedType]:
@@ -196,7 +188,6 @@ class Unsigned(Integral):
             Class(result[1]),
         )
 
-    @override
     def __pow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
         modulo_int = None
@@ -210,19 +201,12 @@ class Unsigned(Integral):
 
         return Class(self._number.__pow__(right._number, modulo_int))
 
-    @override
-    def __rpow__(self, left: Self, modulo: Optional[Self] = None) -> Self:
+    def __rpow__(self, left: Self) -> Self:
         Class = type(self)
-        modulo_int = None
-        if modulo is not None:
-            if not isinstance(modulo, Class):
-                raise TypeError()
-            modulo_int = modulo._number
-
         if not isinstance(left, Class):
             return NotImplemented
 
-        return Class(self._number.__rpow__(left._number, modulo_int))
+        return Class(self._number.__rpow__(left._number))
 
     def __ipow__(self, right: Self, modulo: Optional[Self] = None) -> Self:
         Class = type(self)
@@ -237,7 +221,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__pow__(right._number, modulo_int))
 
-    @override
     def __xor__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
@@ -245,7 +228,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__xor__(right._number))
 
-    @override
     def __rxor__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
@@ -260,7 +242,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__xor__(right._number))
 
-    @override
     def __and__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
@@ -268,7 +249,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__and__(other._number))
 
-    @override
     def __rand__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
@@ -276,7 +256,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__rand__(other._number))
 
-    @override
     def __or__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
@@ -284,7 +263,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__or__(other._number))
 
-    @override
     def __ror__(self, other: Self) -> Self:
         Class = type(self)
         if not isinstance(other, Class):
@@ -292,28 +270,22 @@ class Unsigned(Integral):
 
         return Class(self._number.__ror__(other._number))
 
-    @override
     def __neg__(self) -> int:
         return -self._number
 
-    @override
     def __pos__(self) -> Self:
         return type(self)(self._number)
 
-    @override
     def __invert__(self) -> Self:
         # TODO: How should this behave?
         raise NotImplementedError()
 
-    @override
     def __floor__(self) -> Self:
         return type(self)(self)
 
-    @override
     def __ceil__(self) -> Self:
         return type(self)(self)
 
-    @override
     def __int__(self) -> int:
         return self._number
 
@@ -336,7 +308,6 @@ class Unsigned(Integral):
             return self._number == other_int
         return NotImplemented
 
-    @override
     def __le__(self, other: Self) -> bool:
         Class = type(self)
         if not isinstance(other, Class):
@@ -351,7 +322,6 @@ class Unsigned(Integral):
 
         return self._number >= other._number
 
-    @override
     def __lt__(self, other: Self) -> bool:
         Class = type(self)
         if not isinstance(other, Class):
@@ -366,15 +336,12 @@ class Unsigned(Integral):
 
         return self._number > other._number
 
-    @override
     def __round__(self, ndigits: Optional[int] = None) -> Self:
         return type(self)(self)
 
-    @override
     def __trunc__(self) -> Self:
         return type(self)(self)
 
-    @override
     def __rshift__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
@@ -382,7 +349,6 @@ class Unsigned(Integral):
 
         return Class(self._number >> right._number)
 
-    @override
     def __rrshift__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
@@ -390,7 +356,6 @@ class Unsigned(Integral):
 
         return Class(self._number.__rrshift__(left._number))
 
-    @override
     def __lshift__(self, right: Self) -> Self:
         Class = type(self)
         if not isinstance(right, Class):
@@ -398,7 +363,6 @@ class Unsigned(Integral):
 
         return Class(self._number << right._number)
 
-    @override
     def __rlshift__(self, left: Self) -> Self:
         Class = type(self)
         if not isinstance(left, Class):
@@ -406,9 +370,9 @@ class Unsigned(Integral):
 
         return Class(self._number.__rlshift__(left._number))
 
-    @override
     # Well, mypy is straight up incorrect on this.
-    def __hash__(self) -> int:  # type: ignore[override]
+    @override
+    def __hash__(self) -> int:
         return hash((type(self), self._number))
 
     @override
@@ -521,6 +485,7 @@ class Unsigned(Integral):
         return Uint(self._number.bit_length())
 
 
+@mypyc_attr(acyclic=True)
 class Uint(Unsigned):
     """
     Unsigned integer of arbitrary size.
@@ -554,6 +519,7 @@ def ulen(input: Sized, /) -> Uint:
     return Uint(len(input))
 
 
+@mypyc_attr(acyclic=True)
 class FixedUnsigned(Unsigned):
     """
     Superclass for fixed size unsigned integers. Not intended to be used
@@ -687,15 +653,7 @@ class FixedUnsigned(Unsigned):
         return int(self) - (self.MAX_VALUE._number + 1)
 
 
-_V = TypeVar("_V", bound=FixedUnsigned)
-
-
-def _max_value(class_: Type[_V], bits: int) -> _V:
-    value = object.__new__(class_)
-    value._number = (2**bits) - 1  # type: ignore[misc]
-    return value
-
-
+@mypyc_attr(acyclic=True)
 class U256(FixedUnsigned):
     """
     Unsigned integer, which can represent `0` to `2 ** 256 - 1`, inclusive.
@@ -707,9 +665,18 @@ class U256(FixedUnsigned):
     """
 
 
-U256.MAX_VALUE = _max_value(U256, 256)
+@mypyc_attr(acyclic=True)
+class _U256(U256):
+    @override
+    def _in_range(self, value: int) -> bool:
+        return True
 
 
+U256.MAX_VALUE = _U256(_max_value(256))
+U256.MAX_VALUE = U256(_max_value(256))
+
+
+@mypyc_attr(acyclic=True)
 class U8(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 8 - 1`,
@@ -722,9 +689,18 @@ class U8(FixedUnsigned):
     """
 
 
-U8.MAX_VALUE = _max_value(U8, 8)
+@mypyc_attr(acyclic=True)
+class _U8(U8):
+    @override
+    def _in_range(self, value: int) -> bool:
+        return True
 
 
+U8.MAX_VALUE = _U8(_max_value(8))
+U8.MAX_VALUE = U8(_max_value(8))
+
+
+@mypyc_attr(acyclic=True)
 class U16(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 16 - 1`,
@@ -737,9 +713,18 @@ class U16(FixedUnsigned):
     """
 
 
-U16.MAX_VALUE = _max_value(U16, 16)
+@mypyc_attr(acyclic=True)
+class _U16(U16):
+    @override
+    def _in_range(self, value: int) -> bool:
+        return True
 
 
+U16.MAX_VALUE = _U16(_max_value(16))
+U16.MAX_VALUE = U16(_max_value(16))
+
+
+@mypyc_attr(acyclic=True)
 class U32(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 32 - 1`,
@@ -752,9 +737,18 @@ class U32(FixedUnsigned):
     """
 
 
-U32.MAX_VALUE = _max_value(U32, 32)
+@mypyc_attr(acyclic=True)
+class _U32(U32):
+    @override
+    def _in_range(self, value: int) -> bool:
+        return True
 
 
+U32.MAX_VALUE = _U32(_max_value(32))
+U32.MAX_VALUE = U32(_max_value(32))
+
+
+@mypyc_attr(acyclic=True)
 class U64(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 64 - 1`,
@@ -767,4 +761,12 @@ class U64(FixedUnsigned):
     """
 
 
-U64.MAX_VALUE = _max_value(U64, 64)
+@mypyc_attr(acyclic=True)
+class _U64(U64):
+    @override
+    def _in_range(self, value: int) -> bool:
+        return True
+
+
+U64.MAX_VALUE = _U64(_max_value(64))
+U64.MAX_VALUE = U64(_max_value(64))
