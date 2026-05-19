@@ -11,6 +11,7 @@ from typing import (
     ParamSpec,
     Protocol,
     TypeVar,
+    cast,
     runtime_checkable,
 )
 
@@ -31,16 +32,19 @@ class SlottedFreezable(Protocol):
     _frozen: bool
 
 
+_MUTATE_MESSAGE = "Mutating frozen dataclasses is not allowed."
+
+
 def _setattr_function(self: Any, attr: str, value: Any) -> None:
     if getattr(self, "_frozen", None):
-        raise AttributeError("Mutating frozen dataclasses is not allowed.")
+        raise AttributeError(_MUTATE_MESSAGE)
     else:
         object.__setattr__(self, attr, value)
 
 
 def _delattr_function(self: Any, attr: str) -> None:
     if self._frozen:
-        raise AttributeError("Mutating frozen dataclasses is not allowed.")
+        raise AttributeError(_MUTATE_MESSAGE)
     else:
         object.__delattr__(self, attr)
 
@@ -50,7 +54,7 @@ _P = ParamSpec("_P")
 
 
 def _make_init_function(
-    f: Callable[Concatenate[_S, _P], None]
+    f: Callable[Concatenate[_S, _P], None],
 ) -> Callable[Concatenate[_S, _P], None]:
     @wraps(f)
     def init_function(self: _S, *args: _P.args, **kwargs: _P.kwargs) -> None:
@@ -60,7 +64,7 @@ def _make_init_function(
         f(self, *args, **kwargs)
         self._frozen = will_be_frozen
 
-    return init_function
+    return cast("Callable[Concatenate[_S, _P], None]", init_function)
 
 
 def slotted_freezable(cls: Any) -> Any:
@@ -71,7 +75,7 @@ def slotted_freezable(cls: Any) -> Any:
     Instances will be created frozen by default unless you pass `_frozen=False`
     to `__init__`.
     """
-    cls.__slots__ = ("_frozen",) + tuple(cls.__annotations__)
+    cls.__slots__ = ("_frozen", *tuple(cls.__annotations__))
     cls.__init__ = _make_init_function(cls.__init__)
     cls.__setattr__ = _setattr_function
     cls.__delattr__ = _delattr_function

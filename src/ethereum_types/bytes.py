@@ -32,9 +32,8 @@ class FixedBytes(bytes):
         """
         result = bytes.__new__(cls, *args, **kwargs)
         if len(result) != cls.LENGTH:
-            raise ValueError(
-                f"expected {cls.LENGTH} bytes but got {len(result)}"
-            )
+            message = f"expected {cls.LENGTH} bytes but got {len(result)}"
+            raise ValueError(message)
         return result
 
     def zero_bytes(self) -> "Uint":

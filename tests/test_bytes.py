@@ -8,7 +8,7 @@ def test_fixed_bytes_init_too_short() -> None:
     class TestBytes(FixedBytes):
         LENGTH = 5
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="expected 5 bytes but got 1"):
         TestBytes(b"\0")
 
 
@@ -16,7 +16,7 @@ def test_fixed_bytes_init_too_long() -> None:
     class TestBytes(FixedBytes):
         LENGTH = 5
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="expected 5 bytes but got 6"):
         TestBytes(b"\0" * 6)
 
 
