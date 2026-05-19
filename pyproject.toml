@@ -1,23 +1,133 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling~=1.29.0"]
+build-backend = "hatchling.build"
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 79
+[project]
+name = "ethereum-types"
+description = "Types used by the Ethereum Specification."
+readme = "README.md"
+license = "CC0-1.0"
+dynamic = ["version"]
+requires-python = ">= 3.11"
 
-[tool.black]
-line-length = 79
+dependencies = [
+    "typing-extensions~=4.15.0",
+    "mypy-extensions~=1.1.0",
+]
+
+[project.urls]
+documentation = "https://ethereum.github.io/ethereum-types/"
+source = "https://github.com/ethereum/ethereum-types/"
+
+[dependency-groups]
+doc = [
+    "docc>=0.6.2,<0.7"
+]
+test = [
+    "pytest~=9.0.3",
+    "pytest-cov~=7.1.0",
+]
+lint = [
+    { include-group = "test" },
+    "mypy~=2.1.0",
+]
+dev = [
+    { include-group = "test" },
+    { include-group = "doc" },
+    { include-group = "lint" },
+]
+
+[tool.mypy]
+files = ["src", "tests"]
+strict = true
+disallow_any_unimported = true
+ignore_missing_imports = false
+warn_unreachable = true
+enable_error_code = [
+    "explicit-override",
+    "possibly-undefined",
+    "truthy-bool",
+    "truthy-iterable",
+    "ignore-without-code",
+    "mutable-override",
+]
+
+
+[tool.hatch]
+# TODO: Pending hatch>1.6
+# lock-envs = true
+
+[tool.hatch.envs.doc]
+dependency-groups = ["doc"]
+
+[tool.hatch.envs.hatch-test]
+dependency-groups = ["test"]
+
+[tool.hatch.envs.hatch-static-analysis]
+dependency-groups = ["lint"]
+
+[tool.hatch.envs.hatch-static-analysis.scripts]
+format-check = "ruff format{env:HATCH_FMT_ARGS:} --check --diff {args:.}"
+format-fix = "ruff format{env:HATCH_FMT_ARGS:} {args:.}"
+lint-check = [
+    "ruff check{env:HATCH_FMT_ARGS:} {args:.}",
+    "mypy",
+]
+lint-fix = [
+    "ruff check{env:HATCH_FMT_ARGS:} --fix {args:.}",
+    "mypy",
+]
+
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.hatch.version]
+path = "src/ethereum_types/__init__.py"
 
 [tool.pytest.ini_options]
+required_plugins = ["pytest-cov"]
+addopts = [
+    "--cov-fail-under=100",
+    "--cov=ethereum_types",
+    "--cov-report=term",
+]
 markers = [
     "fixed: exactly-sized integers like U256, U64, etc.",
     "arbitrary: arbitrarily large numbers like Uint",
     "unsigned: numbers greater than or equal to zero",
 ]
 
+[tool.docc.output]
+path = "docs"
+
 [tool.docc.plugins."docc.python.discover"]
 paths = [
     "src",
+]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+ignore = [
+    "PLR2004",
+    "UP006",
+    "UP007",
+    "UP035",
+    "UP045",
+    "TID252",
+    "PLC0415",
+    "RET506",
+    "S101",
+    "SLF001",
+    "RET505",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "D103",
+    "SIM201",
+    "SIM202",
+    "SIM300",
+    "INP001",
 ]

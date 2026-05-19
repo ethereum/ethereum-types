@@ -23,19 +23,19 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install Tox
-        run: pip install tox
+      - name: Install Hatch
+        run: pip install hatch==1.16.5
 
       - name: Build Documentation
         run: |
-          tox -e doc
-          touch .tox/docs/.nojekyll
+          hatch run doc:docc
+          touch ./docs/.nojekyll
 
       - name: Upload Pages Artifact
         id: artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .tox/docs
+          path: docs
 
   deploy:
     needs: build

@@ -12,7 +12,7 @@ jobs:
     runs-on: "ubuntu-latest"
     strategy:
       matrix:
-        py: [ "3.10", "pypy3.10" ]
+        py: [ "3.11", "pypy3.11" ]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,15 +24,16 @@ jobs:
         with:
           python-version: ${{ matrix.py }}
 
-      - name: Install Tox and any other packages
-        run: "pip install 'tox>=4.11,<5' requests"
+      - name: Install Hatch
+        run: "pip install hatch==1.16.5"
 
-      - name: Run Tox (CPython)
+      - name: Run Hatch (CPython)
         if: "${{ !startsWith(matrix.py, 'pypy') }}"
-        run: tox -e static,py3
+        run: |
+          hatch fmt --check
+          hatch test
+          hatch build
 
-      - name: Run Tox (PyPy)
+      - name: Run Hatch (PyPy)
         if: "${{ startsWith(matrix.py, 'pypy') }}"
-        run: tox -e pypy3
-        env:
-          PYPY_GC_MAX: "10G"
+        run: hatch test

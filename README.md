@@ -9,3 +9,12 @@ Types and utilities used by the [Ethereum Execution Layer Specification (EELS)][
 - Utilities for making/interacting with immutable dataclasses (`slotted_freezable`, `modify`.)
 
 [eels]: https://github.com/ethereum/execution-specs
+
+## Quickstart
+
+| What          | How                  |
+|---------------|----------------------|
+| Static Checks | `hatch fmt --check`  |
+| Run Tests     | `hatch test`         |
+| Build         | `hatch build`        |
+| Build Docs    | `hatch run doc:docc` |
