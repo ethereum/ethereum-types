@@ -1470,6 +1470,70 @@ def test_to_be_bytes8(class_: Type[Unsigned]) -> None:
     assert actual == bytes([0x00, 0x00, 0x00, 0x00, 0xEF, 0xCD, 0xAB, 0x89])
 
 
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_complex(class_: Type[Unsigned]) -> None:
+    actual = complex(class_(1))
+    assert isinstance(actual, complex)
+    assert actual == complex(1)
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_bool(class_: Type[Unsigned]) -> None:
+    actual = bool(class_(1))
+    assert actual is True
+
+    actual = bool(class_(0))
+    assert actual is False
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_real(class_: Type[Unsigned]) -> None:
+    actual = class_(55).real
+    assert isinstance(actual, class_)
+    assert actual == class_(55)
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_imag(class_: Type[Unsigned]) -> None:
+    actual = class_(55).imag
+    assert isinstance(actual, class_)
+    assert actual == class_(0)
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_conjugate(class_: Type[Unsigned]) -> None:
+    actual = class_(55).conjugate()
+    assert isinstance(actual, class_)
+    assert actual == class_(55)
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_float(class_: Type[Unsigned]) -> None:
+    actual = float(class_(55))
+    assert isinstance(actual, float)
+    assert int(actual) == 55
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_numerator(class_: Type[Unsigned]) -> None:
+    actual = class_(55).numerator
+    assert isinstance(actual, int)
+    assert actual == 55
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_denominator(class_: Type[Unsigned]) -> None:
+    actual = class_(55).denominator
+    assert isinstance(actual, int)
+    assert actual == 1
+
+
+@pytest.mark.parametrize("class_", UNSIGNED)
+def test_unsigned_index(class_: Type[Unsigned]) -> None:
+    actual = list(range(100))[class_(55)]
+    assert actual == 55
+
+
 @pytest.mark.unsigned
 @pytest.mark.arbitrary
 def test_uint_to_be_bytes8() -> None:

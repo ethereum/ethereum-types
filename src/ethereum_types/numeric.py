@@ -47,6 +47,37 @@ class Unsigned:
             raise OverflowError
         self._number = int_value
 
+    def __complex__(self) -> complex:
+        return complex(self._number)
+
+    def __bool__(self) -> bool:
+        return bool(self._number)
+
+    @property
+    def real(self) -> Self:
+        return self
+
+    @property
+    def imag(self) -> Self:
+        return type(self)(0)
+
+    def conjugate(self) -> Self:
+        return self
+
+    def __float__(self) -> float:
+        return float(self._number)
+
+    @property
+    def numerator(self) -> int:
+        return self._number.numerator
+
+    @property
+    def denominator(self) -> int:
+        return 1
+
+    def __index__(self) -> int:
+        return self._number
+
     @abstractmethod
     def _in_range(self, value: int) -> bool:
         raise NotImplementedError
