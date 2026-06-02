@@ -9,6 +9,8 @@ Similarly, [`Bytes`] represents arbitrarily long byte sequences, while
 subclasses of [`FixedBytes`] (like [`Bytes0`] or [`Bytes64`]) represent
 sequences containing an exact number of bytes.
 
+Finally, [`UintEnum`] is the [`Uint`] equivalent of [`IntEnum`].
+
 [`Uint`]: ref:ethereum_types.numeric.Uint
 [`FixedUnsigned`]: ref:ethereum_types.numeric.FixedUnsigned
 [`U32`]: ref:ethereum_types.numeric.U32
@@ -17,6 +19,8 @@ sequences containing an exact number of bytes.
 [`FixedBytes`]: ref:ethereum_types.bytes.FixedBytes
 [`Bytes0`]: ref:ethereum_types.bytes.Bytes0
 [`Bytes64`]: ref:ethereum_types.bytes.Bytes64
+[`UintEnum`]: ref:ethereum_types.enum.UintEnum
+[`IntEnum`]: https://docs.python.org/3/library/enum.html#enum.IntEnum
 """
 
-__version__ = "0.4.1"
+__version__ = "0.4.0"
