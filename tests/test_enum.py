@@ -20,7 +20,11 @@ def test_subclass() -> None:
     assert len(_MyEnum) == 2
     assert _MyEnum.__members__ == {"A": Uint(1), "B": Uint(2)}
 
+    actual = _MyEnum(Uint(1))
+    assert actual is _MyEnum.A
 
+
+@pytest.mark.xfail(strict=True, reason="see ethereum/ethereum-types#21")
 def test_subclass_cast() -> None:
     class _MyEnum(UintEnum):
         A = 1
@@ -31,6 +35,9 @@ def test_subclass_cast() -> None:
 
     assert isinstance(_MyEnum.B, Uint)
     assert _MyEnum.B == Uint(2)
+
+    actual = _MyEnum(Uint(1))
+    assert actual is _MyEnum.A
 
 
 def test_auto() -> None:
