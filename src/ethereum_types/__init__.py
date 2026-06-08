@@ -23,4 +23,4 @@ Finally, [`UintEnum`] is the [`Uint`] equivalent of [`IntEnum`].
 [`IntEnum`]: https://docs.python.org/3/library/enum.html#enum.IntEnum
 """
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
