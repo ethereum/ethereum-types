@@ -402,10 +402,9 @@ class Unsigned:
 
         return class_(self._number.__rlshift__(left._number))
 
-    # Well, mypy is straight up incorrect on this.
     @override
     def __hash__(self) -> int:
-        return hash((type(self), self._number))
+        return hash(self._number)
 
     @override
     def __repr__(self) -> str:
