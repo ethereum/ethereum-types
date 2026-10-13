@@ -1369,7 +1369,10 @@ def test_fixed_bitwise_ixor(class_: Type[FixedUnsigned]) -> None:
 
 @pytest.mark.parametrize("class_", UNSIGNED)
 def test_bitwise_ixor_int(class_: Type[Unsigned]) -> None:
-    assert class_(0).__ixor__(2**256) is NotImplemented  # type: ignore[arg-type]
+    value = class_(0)
+    with pytest.raises(TypeError):
+        value ^= 2**256  # type: ignore[arg-type]
+    assert value == class_(0)
 
 
 @pytest.mark.parametrize("class_", UNSIGNED)

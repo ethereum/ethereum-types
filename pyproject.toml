@@ -78,11 +78,28 @@ lint-fix = [
     "mypy",
 ]
 
-[tool.hatch.build]
-sources = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/ethereum_types"]
+
+[tool.hatch.build.targets.wheel.hooks.mypyc]
+# Off by default, so the sdist and `py3-none-any` wheel stay pure Python (as
+# PyPy needs). Set `HATCH_BUILD_HOOK_ENABLE_MYPYC=true` to compile.
+enable-by-default = false
+dependencies = ["hatch-mypyc~=0.16.0", "mypy~=2.1.0"]
+include = ["/src/ethereum_types/numeric.py", "/src/ethereum_types/bytes.py"]
 
 [tool.hatch.version]
 path = "src/ethereum_types/__init__.py"
+
+[tool.cibuildwheel]
+build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+environment = { HATCH_BUILD_HOOK_ENABLE_MYPYC = "true" }
+test-groups = ["test"]
+# Coverage cannot see into compiled modules, so drop the coverage options.
+test-command = "pytest -o addopts= {project}/tests"
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]
 
 [tool.pytest.ini_options]
 required_plugins = ["pytest-cov"]

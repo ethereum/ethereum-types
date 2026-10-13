@@ -32,7 +32,7 @@ def _max_value(bits: int) -> int:
     return cast("int", value)  # 2**-1 == 0.5
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class Unsigned:
     """
     Base of integer types.
@@ -513,7 +513,7 @@ class Unsigned:
         return Uint(self._number.bit_length())
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class Uint(Unsigned):
     """
     Unsigned integer of arbitrary size.
@@ -550,7 +550,7 @@ def ulen(sized: Sized, /) -> Uint:
     return Uint(len(sized))
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class FixedUnsigned(Unsigned):
     """
     Superclass for fixed size unsigned integers. Not intended to be used
@@ -686,7 +686,7 @@ class FixedUnsigned(Unsigned):
         return int(self) - (self.MAX_VALUE._number + 1)
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class U256(FixedUnsigned):
     """
     Unsigned integer, which can represent `0` to `2 ** 256 - 1`, inclusive.
@@ -712,7 +712,7 @@ U256.MAX_VALUE = _U256(_max_value(256))
 U256.MAX_VALUE = U256(_max_value(256))
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class U8(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 8 - 1`,
@@ -739,7 +739,7 @@ U8.MAX_VALUE = _U8(_max_value(8))
 U8.MAX_VALUE = U8(_max_value(8))
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class U16(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 16 - 1`,
@@ -766,7 +766,7 @@ U16.MAX_VALUE = _U16(_max_value(16))
 U16.MAX_VALUE = U16(_max_value(16))
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class U32(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 32 - 1`,
@@ -793,7 +793,7 @@ U32.MAX_VALUE = _U32(_max_value(32))
 U32.MAX_VALUE = U32(_max_value(32))
 
 
-@mypyc_attr(acyclic=True)
+@mypyc_attr(acyclic=True, allow_interpreted_subclasses=True)
 class U64(FixedUnsigned):
     """
     Unsigned positive integer, which can represent `0` to `2 ** 64 - 1`,
@@ -818,3 +818,11 @@ class _U64(U64):
 
 U64.MAX_VALUE = _U64(_max_value(64))
 U64.MAX_VALUE = U64(_max_value(64))
+
+
+# mypyc releases before python/mypy#22100 do not fill the C-level `nb_index`
+# slot from `__index__`, so compiled numbers would fail anywhere an integer
+# index is needed (slices, `range()`, `hex()`, ...). Setting the method again
+# makes CPython fill the slot for `Unsigned` and all of its subclasses. Drop
+# this once the wheels are built with a mypy release that includes the fix.
+Unsigned.__index__ = Unsigned.__index__  # type: ignore[method-assign]
